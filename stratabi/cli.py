@@ -35,11 +35,11 @@ _REQUIRED_ENV = [
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="stratabi-dev",
+        prog="stratabi",
         description="StrataBI Developer Edition — local BI runtime "
         "(source-available under the Shaleio Guild Community License v1.0).",
     )
-    p.add_argument("--version", action="version", version=f"stratabi-dev {_VERSION}")
+    p.add_argument("--version", action="version", version=f"stratabi {_VERSION}")
     # Bind to loopback by default — this is a local developer tool, not a hosted
     # service. Use --host 0.0.0.0 explicitly (e.g. inside a WorkSpaces desktop).
     p.add_argument("--host", default="127.0.0.1",
@@ -159,7 +159,7 @@ def _check() -> int:
     _load_env()
     ok = True
 
-    print(f"stratabi-dev {_VERSION}")
+    print(f"stratabi {_VERSION}")
 
     # 1) Core runtime imports (surfaces a broken/thin install clearly).
     try:

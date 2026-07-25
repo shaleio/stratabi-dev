@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 # Source-available Developer / Community Edition. Governed by the Shaleio Guild
 # Community License (SGCL) v1.0 — NOT an OSI-approved open-source license. See LICENSE.md.
-name = "stratabi-dev"
+name = "stratabi"
 description = "StrataBI Developer Edition — a local, source-available BI runtime that runs on your machine against your own AWS data plane. Governed by the Shaleio Guild Community License (SGCL) v1.0."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -68,6 +68,8 @@ Issues = "https://github.com/shaleio/stratabi-dev/issues"
 License = "https://github.com/shaleio/stratabi-dev/blob/main/LICENSE.md"
 
 [project.scripts]
+stratabi = "stratabi.cli:main"
+# Backward-compatible alias — keeps every `stratabi-dev …` command/doc working.
 stratabi-dev = "stratabi.cli:main"
 
 [tool.setuptools]

@@ -44,7 +44,7 @@ provided **without support and without any SLA**.
 ### A. pipx (local runtime)
 
 ```bash
-pipx install stratabi-dev
+pipx install stratabi
 stratabi-dev --check      # preflight: deps, AWS creds/region, STRATABI_* settings
 stratabi-dev              # serves http://127.0.0.1:8050
 ```
@@ -74,7 +74,7 @@ You can inspect and run everything by hand:
 # 1) code + venv
 git clone https://github.com/shaleio/stratabi-dev && cd stratabi-dev
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -e .                                        # or: pip install stratabi-dev
+pip install -e .                                        # or: pip install stratabi
 
 # 2) data plane (OpenTofu 1.6+ / Terraform 1.6+) — creates S3/Athena/Glue/DynamoDB + 2 Lambdas
 cd infra
