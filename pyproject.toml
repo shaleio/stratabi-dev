@@ -1,0 +1,93 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# Source-available Developer / Community Edition. Governed by the Shaleio Guild
+# Community License (SGCL) v1.0 — NOT an OSI-approved open-source license. See LICENSE.md.
+name = "stratabi-dev"
+description = "StrataBI Developer Edition — a local, source-available BI runtime that runs on your machine against your own AWS data plane. Governed by the Shaleio Guild Community License (SGCL) v1.0."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "LicenseRef-Shaleio-Guild-Community-License-1.0" }
+authors = [{ name = "Shaleio LLC", email = "info@shaleio.com" }]
+keywords = ["stratabi", "bi", "dash", "plotly", "athena", "aws", "analytics", "source-available"]
+dynamic = ["version"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Framework :: Dash",
+    "Intended Audience :: Developers",
+    # SGCL is a custom, source-available license — NOT OSI-approved open source.
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Spreadsheet",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+
+# Local runtime dependencies — every one is directly imported by the app package.
+# Heavy data/ML libraries used only by Lambda functions or the build are in the
+# [lambda] extra below, so they are NOT installed into a pipx runtime environment.
+dependencies = [
+    "dash>=4.1,<5",
+    "dash-bootstrap-components>=2.0,<3",
+    "dash-ag-grid>=2",
+    "plotly>=5.22,<6",
+    "plotly-resampler>=0.11,<1",
+    "pandas>=2.2,<3",
+    "pyarrow>=15",
+    "flask>=3",
+    "boto3>=1.34",
+    "botocore>=1.34",
+    "python-dotenv>=1",
+]
+
+[project.optional-dependencies]
+# Used by the Developer Edition Lambda functions / data-plane build — NOT by the
+# local Dash runtime. Kept out of the default install to keep pipx environments small.
+lambda = [
+    "awswrangler>=3.7",
+    "scikit-learn>=1.4",
+    "fastparquet>=2024.2",
+    "numpy>=1.26",
+]
+dev = [
+    "pytest>=8",
+    "build>=1",
+    "twine>=5",
+]
+
+[project.urls]
+Homepage = "https://shaleio.com"
+Documentation = "https://shaleio.com/docs"
+Source = "https://github.com/shaleio/stratabi-dev"
+Issues = "https://github.com/shaleio/stratabi-dev/issues"
+License = "https://github.com/shaleio/stratabi-dev/blob/main/LICENSE.md"
+
+[project.scripts]
+stratabi-dev = "stratabi.cli:main"
+
+[tool.setuptools]
+license-files = ["LICENSE.md", "LICENSE.docx"]
+
+[tool.setuptools.dynamic]
+version = { attr = "stratabi.__version__" }
+
+[tool.setuptools.packages.find]
+# The package lives at the repository root (stratabi/). Do not package infra/ or aws/.
+include = ["stratabi*"]
+
+[tool.setuptools.package-data]
+# Ship all non-.py runtime assets in the wheel + sdist: themes, static assets,
+# the Monaco editor bundle, and JSON schemas.
+stratabi = [
+    "assets/**/*",
+    "themes/*",
+    "data/schemas/*.json",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

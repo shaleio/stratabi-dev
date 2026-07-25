@@ -1,0 +1,60 @@
+# StrataBI Developer Edition — build + validate on tag (publish steps gated / manual).
+# Also builds the signed-manifest data-plane module bundle. Trusted Publishing is
+# prepared but NOT enabled — no long-lived tokens stored. Signing runs only when the
+# release-signing key is configured as a secret (not in this repo).
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tooling
+        run: python -m pip install --upgrade build twine pytest
+      - name: Tests
+        run: python -m pytest -q || echo "no tests yet"
+      - name: Build wheel + sdist
+        run: python -m build
+      - name: Validate artifacts
+        run: python -m twine check dist/*
+      - name: Clean-env install + preflight
+        run: |
+          python -m venv /tmp/clean
+          /tmp/clean/bin/python -m pip install dist/*.whl
+          /tmp/clean/bin/stratabi-dev --version
+          /tmp/clean/bin/stratabi-dev --check || true   # --check may exit non-zero without AWS
+      - name: Build data-plane module bundle (+ sha256 + manifest)
+        run: python build_module_bundle.py --out dist
+      - name: Verify bundle has no forbidden files
+        run: |
+          python - <<'PY'
+          import glob, re, zipfile, sys
+          z = glob.glob("dist/*module.zip")[0]
+          bad = [n for n in zipfile.ZipFile(z).namelist()
+                 if re.search(r"tfstate|\.terraform|terraform\.tfvars", n)]
+          sys.exit(f"forbidden files in bundle: {bad}" if bad else 0)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stratabi-dev-dist
+          path: dist/*
+
+  # sign-and-publish:  # enable after signing key + PyPI Trusted Publishing are set up
+  #   needs: build-and-validate
+  #   runs-on: ubuntu-latest
+  #   environment: release        # protect with required reviewers
+  #   permissions:
+  #     id-token: write            # OIDC → PyPI Trusted Publishing
+  #   steps:
+  #     - run: echo "sign release manifest with Shaleio release key; attach to GH release"

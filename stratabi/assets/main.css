@@ -1,0 +1,72 @@
+/* Make modal body scroll independently */
+.modal-dialog-scrollable .modal-body {
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+/* ===========================================================================
+   Dash Design Kit theming.
+
+   dcc.Dropdown / DatePicker / Checklist (dash >= 4) are NOT react-select or
+   Bootstrap-styled — they render their own markup (.dash-dropdown,
+   .dash-options-list-option, .dash-dropdown-content, …) and are themed entirely
+   by --Dash-* design tokens. By default --Dash-Fill-Inverse-Strong resolves to
+   white and --Dash-Fill-Interactive-Strong to a purple, so on a dark theme you
+   get white boxes, barely-visible text, and purple hovers.
+
+   Instead of overriding every component class, we remap the --Dash-* tokens to
+   the active Bootstrap/Bootswatch theme variables. One block themes every Dash
+   component, light OR dark, automatically. !important so it wins over the Dash
+   bundle regardless of stylesheet load order.
+   =========================================================================== */
+:root {
+  /* Surfaces + text (component CSS references both Strong/strong casings) */
+  --Dash-Fill-Inverse-Strong: var(--bs-body-bg, #212529) !important;
+  --Dash-Fill-Inverse-strong: var(--bs-body-bg, #212529) !important;
+  --Dash-Text-Strong:    var(--bs-body-color, #f8f9fa) !important;
+  --Dash-Text-Weak:      var(--bs-secondary-color, #adb5bd) !important;
+  --Dash-Text-Disabled:  var(--bs-secondary-color, #6c757d) !important;
+  --Dash-Stroke-Strong:  var(--bs-border-color, #495057) !important;
+
+  /* Interactive accent (focus rings, checkbox accent, search focus) -> brand teal */
+  --Dash-Fill-Interactive-Strong: var(--bs-primary, #34b6c4) !important;
+  --Dash-Fill-Interactive-Weak:   var(--bs-tertiary-bg, rgba(255, 255, 255, 0.08)) !important;
+  --Dash-Fill-Disabled:  var(--bs-border-color, #495057) !important;
+
+  /* Menu shadow */
+  --Dash-Shading-Strong: rgba(0, 0, 0, 0.5) !important;
+  --Dash-Shading-Weak:   rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Option row hover/keyboard focus -> success (per request), with a subtle fill
+   for affordance. Overrides the token-driven text color on the hovered row only,
+   so general interactive accents stay brand teal but row hover reads as success. */
+.dash-options-list-option:not(:has(input[disabled])):hover,
+.dash-options-list-option:not(:has(input[disabled])):focus-within {
+  color: var(--bs-success, #2faa86) !important;
+  background: rgba(var(--bs-success-rgb, 47, 170, 134), 0.12) !important;
+}
+
+/* Selected option: keep text readable on the dark menu with a faint brand fill */
+.dash-options-list-option.selected,
+.dash-options-list-option[aria-selected="true"] {
+  color: var(--bs-body-color, #f8f9fa) !important;
+  background: rgba(var(--bs-primary-rgb, 52, 182, 196), 0.15) !important;
+}
+
+/* Placeholder / empty value text stays muted but visible */
+.dash-dropdown-placeholder {
+  color: var(--bs-secondary-color, #adb5bd) !important;
+}
+
+/* ---------------------------------------------------------------------------
+   DatePicker (dash-datepicker-*) — same Dash Design Kit token system, so it is
+   already themed by the --Dash-* remap above (dark surfaces, light text, teal
+   selected day, faint range fill). This only adds the one consistency touch:
+   make calendar DAY HOVER read success, matching the dropdown row hover. The
+   selected day keeps the brand-teal token treatment.
+   --------------------------------------------------------------------------- */
+.dash-datepicker-calendar td:not(.dash-datepicker-calendar-date-selected):not(.dash-datepicker-calendar-date-disabled):hover {
+  background-color: rgba(var(--bs-success-rgb, 47, 170, 134), 0.15) !important;
+  color: var(--bs-success, #2faa86) !important;
+}

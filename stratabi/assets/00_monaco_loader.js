@@ -1,0 +1,1 @@
+var require = { paths: { vs: "/assets/monaco/vs" } };

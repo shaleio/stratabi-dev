@@ -1,0 +1,24 @@
+# StrataBI Developer / Community Edition — example variables.
+# Copy to terraform.tfvars and edit. (terraform.tfvars is git-ignored.)
+#
+# This stack provisions only the AWS data plane. You run the StrataBI app
+# locally; there is no ECS/ALB/VPC to configure here.
+
+# ---- Region ----
+region = "us-east-1"
+
+# ---- Naming / multi-install isolation ----
+# Distinct name_prefix per install lets you run more than one in an account.
+# Must be lowercase, start with a letter, <= 21 chars.
+name_prefix = "stratabi"
+
+# ---- Athena workgroup sharding ----
+enable_athena_workgroup = false   # also create a single legacy "stratabi" workgroup
+athena_workgroup_count  = 5       # number of sharded workgroups (<name_prefix>-wg-NN)
+
+# ---- Local runtime IAM ----
+# Principals allowed to assume the generated local-runtime role. Leave empty to
+# trust the account root (any IAM principal in the account with sts:AssumeRole).
+# Example: lock it to just your user.
+# local_runtime_assume_principals = ["arn:aws:iam::123456789012:user/alex"]
+local_runtime_assume_principals = []

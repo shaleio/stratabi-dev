@@ -1,0 +1,19 @@
+{
+  "module_id": "stratabi_dev",
+  "version": "1.0.0",
+  "entrypoint": "tofu",
+  "state_key": "stratabi_dev/platform.tfstate",
+  "delivery": "local",
+  "supports_destroy": true,
+  "_comment": "StrataBI Developer / Community Edition — DATA PLANE ONLY (no ECS/ALB/VPC/ECR/Cognito). Source-available under the Shaleio Guild Community License (SGCL) v1.0. delivery=local so the tofu is cached into the customer bucket and teardown works offline. The bundle ships the infra under tofu/ and the theme assets under stratabi/themes/ so the tofu's ${path.module}/../stratabi/themes path resolves inside the bundle. required_permissions is the SIMPLE (broad service:*) form for a first-party data-plane module. Installed HQ-free (no StrataHQ entitlement).",
+  "required_permissions": [
+    "s3",
+    "dynamodb",
+    "lambda",
+    "athena",
+    "glue",
+    "logs",
+    "iam",
+    "sts"
+  ]
+}

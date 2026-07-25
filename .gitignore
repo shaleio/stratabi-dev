@@ -1,0 +1,97 @@
+# -----------------------------------
+# Python cache + compiled files
+# -----------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Ignore Jupyter checkpoints (even if unused)
+.ipynb_checkpoints/
+
+# -----------------------------------
+# Virtual environments
+# -----------------------------------
+venv/
+env/
+.venv/
+ENV/
+.ENV/
+
+# Poetry / Pipenv specific
+poetry.lock
+Pipfile.lock
+
+# -----------------------------------
+# Build + distribution
+# -----------------------------------
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# -----------------------------------
+# Dash / Flask cache
+# -----------------------------------
+*.log
+.cache/
+
+# -----------------------------------
+# IDE + Editor junk
+# -----------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# -----------------------------------
+# OS-specific trash
+# -----------------------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------------------
+# Other
+# -----------------------------------
+*.bak
+*.tmp
+
+# Terraform / OpenTofu
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+# Local, account-specific variables must NEVER be published (vpc/subnet/bucket ids):
+terraform.tfvars
+*.auto.tfvars
+!*.tfvars.example
+# Root infra lock file IS tracked intentionally (reproducible providers):
+!.terraform.lock.hcl
+
+# AWS / binaries
+awscliv2.zip
+aws/
+awscli/
+
+# Packaging / test caches
+*.whl
+*.tar.gz
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.env.*
+!.env.example
+
+# Build artifacts
+*.zip
+dist/
+build/
+
+# Python
+__pycache__/
+.env
+
+infra/build/*.zip

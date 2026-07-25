@@ -1,0 +1,16 @@
+{
+    "settings": {
+      "interval_enabled": false,
+      "interval_ms": 60000
+    },
+    "layout": [
+      {
+        "id": "welcome_markdown",
+        "type": "markdown",
+        "title": "Welcome to StrataBI",
+        "position": { "x": 0, "y": 0, "w": 12, "h": 2 },
+        "text": "### 🚀 StrataBI is running!\n\nEdit this JSON to build your first dashboard."
+      }
+    ]
+  }
+  

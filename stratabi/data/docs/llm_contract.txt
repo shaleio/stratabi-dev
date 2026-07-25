@@ -1,0 +1,280 @@
+StrataBI is a declarative BI engine.
+
+Core model:
+
+* Dashboards are defined in JSON.
+* Dash renders UI components.
+* Plotly renders visualizations.
+* Pandas provides dataframe semantics.
+* Athena provides SQL execution over catalog-backed data.
+* StrataBI may resolve source macros before submitting SQL to Athena.
+
+Dashboard structure:
+
+* Dashboards contain a grid of tiles.
+* Tiles define position, dbc.Card presentation, load policy, execution backend, query, and block.
+* Blocks render content inside a dbc.Card.
+* The dashboard JSON declares intent. StrataBI core owns orchestration, source resolution, result loading, and execution routing.
+
+Tile fields:
+
+* position: controls row, order, and Bootstrap width.
+* card: controls dbc.Card presentation.
+* load: controls when the tile loads, reloads, or creates new work.
+* exec: controls what produces or loads the result.
+* query: declares SQL text and optional parameter bindings.
+* block: declares the renderer and renderer config.
+
+Load rules:
+
+* load.mode controls when work is allowed to start or restart.
+* Default mode should normally be load_once.
+* load_once: run once for the stable dashboard/session/tile/query combination; interval polling may check status but should not create new work.
+* interval: may create new work on interval buckets.
+* input: may create new work when input state changes.
+* manual: may create new work only when triggered.
+* always: creates new work every render cycle; use sparingly.
+
+Exec rules:
+
+* exec.type controls the producer/backend.
+* cache: directly loads an existing artifact from cache_s3_uri.
+* athena: runs SQL through Athena.
+* lambda: invokes a registered StrataBI module Lambda.
+* exec.async is currently honored only for athena. Lambda module execution already uses the async status_context artifact flow.
+* cache_s3_uri should be a full s3:// URI for user-provided artifacts.
+* Internal runtime results use system_bucket + result_s3_key.
+
+Runtime artifact rules:
+
+* Producers write accepted artifact formats.
+* Core normalizes artifacts.
+* Blocks render normalized results.
+* Dataframe artifacts are usually parquet.
+* Source data stays where it lives.
+* Runtime query results are materialized into StrataBI runtime/results.
+
+Blocks:
+
+* plotly: block.config.figure is raw Plotly JSON with optional @column bindings.
+* plotly_resampler: same as plotly, optimized for large datasets.
+* table: renders dataframe results in a table/grid.
+* input_select: block.config maps to a selector component.
+* input_range: block.config maps to a range/slider-style component.
+* markdown, image, raw_html: render static or artifact-backed content.
+* Input blocks write values to the dashboard input store; queries read from the store via query.params.
+
+Data binding rules:
+
+* @column references in Plotly JSON bind to pandas DataFrame columns.
+* Example: "x": "@month" binds to df["month"].
+* SQL queries may include :param tokens.
+* query.params maps :param names to input IDs stored in dcc.Store.
+* All input values are stored centrally in dcc.Store.
+* Dash components are ephemeral views over stored state.
+
+Source macro rules:
+
+* StrataBI supports Athena SQL with source macros.
+* Source macros are not Athena SQL.
+* StrataBI resolves source macros before submitting SQL to Athena.
+* MVP supported macros:
+
+  * !parquet('s3://bucket/prefix-or-file.parquet')
+  * !csv('s3://bucket/prefix-or-file.csv')
+* Source macros create or reuse deterministic external Glue tables in the StrataBI catalog database.
+* These tables duplicate metadata, not source data.
+* Athena queries the original S3 data in place.
+* The query result is then materialized as a StrataBI runtime artifact.
+
+Source macro example:
+
+Input SQL:
+
+SELECT
+"sepal.length",
+"sepal.width",
+variety
+FROM !parquet('s3://stratabi-system-332696961529/runtime/test/iris/')
+LIMIT 150
+
+StrataBI resolves this to normal Athena SQL similar to:
+
+SELECT
+"sepal.length",
+"sepal.width",
+variety
+FROM "stratabi"."_*src_parquet*<hash>"
+LIMIT 150
+
+The generated Glue table points to the original S3 location. The source parquet is not copied.
+
+Objective:
+Generate valid StrataBI dashboard JSON following the schema at <whatevermywebaddressis>.
+
+Canonical patterns:
+
+Minimal Plotly block with @column binding:
+
+{
+"block": {
+"type": "plotly",
+"config": {
+"figure": {
+"data": [
+{
+"type": "scatter",
+"x": "@month",
+"y": "@revenue"
+}
+]
+}
+}
+}
+}
+
+Cache parquet tile:
+
+{
+"id": "iris_scatter",
+"title": "Iris Scatter",
+"position": {
+"row": 0,
+"order": 0,
+"width": 12
+},
+"load": {
+"mode": "load_once"
+},
+"exec": {
+"type": "cache",
+"cache_s3_uri": "s3://stratabi-system-332696961529/runtime/test/iris.parquet",
+"result_kind": "dataframe",
+"result_format": "parquet",
+"result_name": "iris.parquet"
+},
+"block": {
+"type": "plotly",
+"config": {
+"figure": {
+"data": [
+{
+"type": "scatter",
+"mode": "markers",
+"x": "@sepal.length",
+"y": "@sepal.width",
+"marker": {
+"size": 10
+},
+"name": "Iris"
+}
+],
+"layout": {
+"title": "Iris: Sepal Length vs Sepal Width"
+}
+},
+"height": "500px"
+}
+}
+}
+
+Async Athena tile using source macro:
+
+{
+"id": "athena_iris_scatter",
+"title": "Async Athena Iris Scatter",
+"position": {
+"row": 0,
+"order": 0,
+"width": 12
+},
+"load": {
+"mode": "load_once"
+},
+"exec": {
+"type": "athena",
+"async": true,
+"database": "stratabi",
+"result_kind": "dataframe",
+"result_format": "parquet",
+"result_name": "athena_iris.parquet"
+},
+"query": {
+"sql": "SELECT \"sepal.length\", \"sepal.width\", variety FROM !parquet('s3://stratabi-system-332696961529/runtime/test/iris/') LIMIT 150"
+},
+"block": {
+"type": "plotly",
+"config": {
+"figure": {
+"data": [
+{
+"type": "scatter",
+"mode": "markers",
+"x": "@sepal.length",
+"y": "@sepal.width",
+"text": "@variety",
+"marker": {
+"size": 10
+},
+"name": "Athena Iris"
+}
+],
+"layout": {
+"title": "Async Athena Iris Scatter"
+}
+},
+"height": "500px"
+}
+}
+}
+
+Input selector:
+
+{
+"block": {
+"type": "input_select",
+"config": {
+"input_id": "region",
+"label": "Region",
+"component": "dropdown",
+"options": [
+{ "label": "US", "value": "US" },
+{ "label": "EU", "value": "EU" }
+],
+"value": "US",
+"multi": false
+}
+}
+}
+
+Input range:
+
+{
+"block": {
+"type": "input_range",
+"config": {
+"input_id": "date_range",
+"label": "Date Range",
+"min": 0,
+"max": 100,
+"step": 1,
+"value": [0, 100]
+}
+}
+}
+
+Query with :param bound to input store:
+
+{
+"query": {
+"sql": "SELECT * FROM sales WHERE month BETWEEN :start AND :end",
+"params": {
+"start": "date_range.start_date",
+"end": "date_range.end_date"
+}
+}
+}
+
+Note: When using Athena quoted identifiers inside dashboard JSON, escape the double quotes with backslashes.
+
+User Input:
