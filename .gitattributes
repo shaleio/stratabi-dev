@@ -1,0 +1,21 @@
+# Normalize line endings so Windows/macOS/Linux checkouts don't churn the tree.
+# Text files are stored as LF in the repo (the public-repo convention).
+* text=auto eol=lf
+
+# Scripts that must be LF regardless.
+*.sh   text eol=lf
+*.py   text eol=lf
+
+# Binary assets — never touch.
+*.png  binary
+*.ico  binary
+*.jpg  binary
+*.jpeg binary
+*.webp binary
+*.docx binary
+*.zip  binary
+*.whl  binary
+
+# Vendored, minified third-party assets — leave EXACTLY as shipped (do not normalize).
+stratabi/assets/plotly.min.js -text
+stratabi/assets/monaco/**      -text
