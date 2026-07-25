@@ -52,21 +52,21 @@ stratabi-dev              # serves http://127.0.0.1:8050
 The runtime needs a data plane in your account and a few `STRATABI_*` settings. Get
 them either with the CLI (below) or manually (Path B).
 
-#### With StrataCLI (optional — provisions the data plane for you)
+#### With StrataCTL (optional — provisions the data plane for you)
 
 ```bash
-pipx install stratacli
-stratacli bootstrap --profile <aws-profile> --region <aws-region>   # one-time: StrataCI
-stratacli dev install                                               # deploy the Dev data plane (HQ-free)
-stratacli dev configure-local                                       # write non-secret .env (no AWS keys)
+pipx install stratactl
+stratactl bootstrap --profile <aws-profile> --region <aws-region>   # one-time: StrataCI
+stratactl dev install                                               # deploy the Dev data plane (HQ-free)
+stratactl dev configure-local                                       # write non-secret .env (no AWS keys)
 stratabi-dev                                                        # run the app
 ```
 
-Developer Edition installation via StrataCLI **never contacts StrataHQ** and requires
+Developer Edition installation via StrataCTL **never contacts StrataHQ** and requires
 no license contract — the artifact comes from a public GitHub release, your own S3, or
 the conventional bucket key.
 
-### B. Manual — no StrataCLI required
+### B. Manual — no StrataCTL required
 
 You can inspect and run everything by hand:
 
@@ -132,7 +132,7 @@ Badge in the UI: *ForgeWorks Quick Demo — Embedded synthetic data*.
 
 **AWS Demo (validates the customer-owned Athena data plane).** Uploads the same data
 to **your** StrataBI Dev data plane and queries it through Athena. Explicit and
-namespaced; also available via `stratacli dev demo`.
+namespaced; also available via `stratactl dev demo`.
 
 ```bash
 stratabi-dev demo aws install      # confirm before creating anything (--yes to skip)
@@ -164,7 +164,7 @@ Intentionally slimmer than the hosted Enterprise edition: no admin console, no A
 splash, no RBAC, no favorites/pinned overlays. The `infra/` here provisions **only the
 data plane** — no ECS/ALB/VPC/ECR. Managed/hosted deployment is an Enterprise pattern
 (SGCL §5.6). Uninstall by destroying the data plane (`tofu destroy` in `infra/`, or
-`stratacli dev uninstall`); this removes the system resources you created.
+`stratactl dev uninstall`); this removes the system resources you created.
 
 ## Building modules
 

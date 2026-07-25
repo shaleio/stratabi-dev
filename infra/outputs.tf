@@ -87,6 +87,6 @@ output "env_file_preview" {
 }
 
 output "git_registry_table" {
-  description = "Dashboard git registry table (StrataCLI dashboards commands)."
+  description = "Dashboard git registry table (StrataCTL dashboards commands)."
   value       = aws_dynamodb_table.stratabi_dashboard_git_registry.name
 }

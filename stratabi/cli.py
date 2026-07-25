@@ -24,7 +24,7 @@ except Exception:  # pragma: no cover - packaging edge
     _VERSION = "0.0.0"
 
 # The STRATABI_* settings the runtime needs to reach a real data plane. These come
-# from `tofu output` after `stratacli dev install` (or a manual `tofu apply`).
+# from `tofu output` after `stratactl dev install` (or a manual `tofu apply`).
 _REQUIRED_ENV = [
     "STRATABI_SYSTEM_BUCKET",
     "STRATABI_DASHBOARD_PREFIX",
@@ -66,7 +66,7 @@ def _build_parser() -> argparse.ArgumentParser:
     drl.add_argument("--yes", action="store_true")
 
     # AWS demo (isolated namespace in your data plane). Also available via
-    # `stratacli dev demo …`. Kept as a nested group to preserve the local/AWS split.
+    # `stratactl dev demo …`. Kept as a nested group to preserve the local/AWS split.
     daws = dsub.add_parser("aws", help="AWS-backed ForgeWorks demo (Athena).")
     asub = daws.add_subparsers(dest="aws_action", required=True)
     for act in ("install", "remove", "status"):
@@ -196,7 +196,7 @@ def _check() -> int:
     if missing:
         ok = False
         print(f"  [FAIL] missing STRATABI_* settings: {', '.join(missing)}")
-        print("         fix: run `stratacli dev install` (or `tofu apply` in infra/) and")
+        print("         fix: run `stratactl dev install` (or `tofu apply` in infra/) and")
         print("              write the outputs into your .env (see README).")
     else:
         print("  [ok]  required STRATABI_* settings present")

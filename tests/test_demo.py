@@ -203,7 +203,7 @@ def test_aws_missing_data_plane_errors(monkeypatch):
     monkeypatch.delenv("STRATABI_ATHENA_OUTPUT", raising=False)
     with pytest.raises(athena.DemoNotReadyError) as e:
         athena.discover(_Session([], [None]), profile="demo")
-    assert "stratacli dev install" in str(e.value)
+    assert "stratactl dev install" in str(e.value)
 
 
 def test_aws_remove_only_demo_namespace(aws_env):

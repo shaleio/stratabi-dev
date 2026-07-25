@@ -809,7 +809,7 @@ def load_dashboard_json(
 
 # ---------------------------------------------------------------------
 # Git registry overlay: the set of dashboards version-controlled via git
-# (the StrataCLI `dashboards` commands scan this table). GLOBAL/DASHBOARD#<key>
+# (the StrataCTL `dashboards` commands scan this table). GLOBAL/DASHBOARD#<key>
 # overlay shape. No UI in the developer edition — register via the CLI.
 # ---------------------------------------------------------------------
 def is_dashboard_git_registered(dashboard_key: str) -> bool:
@@ -873,7 +873,7 @@ def delete_dashboard_git_registered(dashboard_key: str) -> None:
 
 
 def list_dashboard_git_registered() -> list[dict[str, Any]]:
-    """All git-registered dashboards (what the StrataCLI version-controls)."""
+    """All git-registered dashboards (what the StrataCTL version-controls)."""
     table = _get_table("STRATABI_DASHBOARD_GIT_REGISTRY")
     if table is None:
         return []

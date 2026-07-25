@@ -26,7 +26,7 @@ Signing (documented, not performed here — no keys are created or committed):
     signs the *release manifest* (which pins the zip's SHA-256) with the Shaleio
     release key; the detached signature is published next to the zip. The StrataCI
     runner verifies SHA-256 always, and the signature when STRATA_REQUIRE_SIGNATURE
-    is set (see stratacli runner). Custom/unsigned URLs must be installed with an
+    is set (see stratactl runner). Custom/unsigned URLs must be installed with an
     explicit --allow-unsigned and are never treated as official.
 """
 

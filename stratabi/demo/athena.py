@@ -65,7 +65,7 @@ def discover(session, profile: str | None = None) -> DemoConfig:
         raise DemoNotReadyError(
             f'The StrataBI Dev AWS data plane was not found for profile "{prof}".\n'
             "Run:\n\n"
-            f"    stratacli dev install --profile {prof} --region {region or '<region>'}\n\n"
+            f"    stratactl dev install --profile {prof} --region {region or '<region>'}\n\n"
             "before installing the AWS demo. (Missing: "
             + ", ".join(k for k, v in {
                 "STRATABI_SYSTEM_BUCKET": bucket,
