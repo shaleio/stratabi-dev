@@ -71,7 +71,7 @@ License = "https://github.com/shaleio/stratabi-dev/blob/main/LICENSE.md"
 stratabi-dev = "stratabi.cli:main"
 
 [tool.setuptools]
-license-files = ["LICENSE.md", "LICENSE.docx"]
+license-files = ["LICENSE.md", "LICENSE.docx", "THIRD_PARTY_NOTICES.md"]
 
 [tool.setuptools.dynamic]
 version = { attr = "stratabi.__version__" }

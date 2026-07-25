@@ -50,11 +50,28 @@ jobs:
           name: stratabi-dev-dist
           path: dist/*
 
-  # sign-and-publish:  # enable after signing key + PyPI Trusted Publishing are set up
-  #   needs: build-and-validate
-  #   runs-on: ubuntu-latest
-  #   environment: release        # protect with required reviewers
-  #   permissions:
-  #     id-token: write            # OIDC → PyPI Trusted Publishing
-  #   steps:
-  #     - run: echo "sign release manifest with Shaleio release key; attach to GH release"
+  # Publish the wheel + sdist to PyPI via Trusted Publishing (OIDC — no API token).
+  # Gated by the `pypi` GitHub Environment: add required reviewers so a human approves
+  # each release. Enable after registering the Trusted Publisher on PyPI (see
+  # ../stratabi/docs/internal/publish/pypi-publishing.md). Bundle signing (the
+  # data-plane module release manifest) is separate and stays manual for now.
+  publish-pypi:
+    needs: build-and-validate
+    runs-on: ubuntu-latest
+    environment: pypi            # protect with required reviewers in repo settings
+    permissions:
+      id-token: write            # OIDC -> PyPI Trusted Publishing (no token secret)
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: stratabi-dev-dist
+          path: dist
+      # Only ship the Python distributions (not the module.zip) to PyPI.
+      - run: |
+          mkdir -p pydist
+          cp dist/*.whl dist/*.tar.gz pydist/ 2>/dev/null || true
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: pydist
+          # First run — reserve the name on TestPyPI by uncommenting:
+          # repository-url: https://test.pypi.org/legacy/

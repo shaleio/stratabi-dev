@@ -32,6 +32,9 @@ copy: `LICENSE.docx`).
   in the SGCL apply. This README is a convenience summary and **does not replace** the
   license text.
 
+Bundled third-party components (the Monaco editor and Plotly.js, both MIT) are
+acknowledged in [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md).
+
 **Costs & support.** StrataBI Dev runs against **your** AWS account — **you are
 responsible for all AWS and third-party costs** it incurs. The Developer Edition is
 provided **without support and without any SLA**.
