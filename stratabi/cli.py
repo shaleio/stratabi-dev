@@ -201,7 +201,7 @@ def _check() -> int:
     else:
         print("  [ok]  required STRATABI_* settings present")
 
-    print("PASS" if ok else "FAIL — resolve the items above before running.")
+    print(("PASS 🐒🔨" if ok else "FAIL — resolve the items above before running."))
     return 0 if ok else 1
 
 
@@ -210,7 +210,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if getattr(args, "command", None) == "demo":
         _load_env()
-        return _demo(args)
+        rc = _demo(args)
+        # Brand sign-off on completed demo ops. Skip `quick` (it launches the server
+        # and only returns on Ctrl-C, where a trailing "done" would read oddly).
+        if rc == 0 and getattr(args, "demo_action", None) != "quick":
+            print("done 🐒🔨")   # Shaleio / MonkeyHammer
+        return rc
 
     if args.check:
         return _check()

@@ -69,8 +69,6 @@ License = "https://github.com/shaleio/stratabi-dev/blob/main/LICENSE.md"
 
 [project.scripts]
 stratabi = "stratabi.cli:main"
-# Backward-compatible alias — keeps every `stratabi-dev …` command/doc working.
-stratabi-dev = "stratabi.cli:main"
 
 [tool.setuptools]
 license-files = ["LICENSE.md", "LICENSE.docx", "THIRD_PARTY_NOTICES.md"]

@@ -9,7 +9,7 @@ module development, dashboard authoring, and ad-hoc analytics.
 ```
 your laptop / AWS WorkSpaces                 your AWS account
 ┌─────────────────────────┐                 ┌───────────────────────────────┐
-│  stratabi-dev            │  boto3 (creds)  │  S3 · Athena · Glue           │
+│  stratabi                │  boto3 (creds)  │  S3 · Athena · Glue           │
 │  http://127.0.0.1:8050   │ ───────────────▶│  Lambda (async + status)      │
 │  (Dash / Plotly)         │                 │  DynamoDB (status + registries)│
 └─────────────────────────┘                 └───────────────────────────────┘
@@ -45,8 +45,8 @@ provided **without support and without any SLA**.
 
 ```bash
 pipx install stratabi
-stratabi-dev --check      # preflight: deps, AWS creds/region, STRATABI_* settings
-stratabi-dev              # serves http://127.0.0.1:8050
+stratabi --check      # preflight: deps, AWS creds/region, STRATABI_* settings
+stratabi              # serves http://127.0.0.1:8050
 ```
 
 The runtime needs a data plane in your account and a few `STRATABI_*` settings. Get
@@ -59,7 +59,7 @@ pipx install stratactl
 stratactl bootstrap --profile <aws-profile> --region <aws-region>   # one-time: StrataCI
 stratactl dev install                                               # deploy the Dev data plane (HQ-free)
 stratactl dev configure-local                                       # write non-secret .env (no AWS keys)
-stratabi-dev                                                        # run the app
+stratabi                                                        # run the app
 ```
 
 Developer Edition installation via StrataCTL **never contacts StrataHQ** and requires
@@ -85,7 +85,7 @@ cd ..
 
 # 3) credentials — set AWS_PROFILE (or keys) + AWS_REGION in .env, attach the emitted
 #    data-plane policy to your IAM identity (see infra outputs), then:
-stratabi-dev
+stratabi
 ```
 
 The app loads a local `.env` at startup. See [`.env.example`](./.env.example) for the
@@ -94,7 +94,7 @@ full annotated list of settings.
 ## CLI
 
 ```
-stratabi-dev [--host 127.0.0.1] [--port 8050] [--debug] [--check] [--version]
+stratabi [--host 127.0.0.1] [--port 8050] [--debug] [--check] [--version]
 ```
 
 - Binds to **loopback by default** — this is a local developer tool with no built-in
@@ -122,10 +122,10 @@ data synthetic) — that runs two ways from the same canonical dataset.
 network — deterministic data baked into static blocks.
 
 ```bash
-stratabi-dev demo quick            # generate + open the Quick Demo
-stratabi-dev demo generate         # generate assets only (no launch)
-stratabi-dev demo status
-stratabi-dev demo remove-local     # remove local demo assets
+stratabi demo quick            # generate + open the Quick Demo
+stratabi demo generate         # generate assets only (no launch)
+stratabi demo status
+stratabi demo remove-local     # remove local demo assets
 ```
 
 Badge in the UI: *ForgeWorks Quick Demo — Embedded synthetic data*.
@@ -135,9 +135,9 @@ to **your** StrataBI Dev data plane and queries it through Athena. Explicit and
 namespaced; also available via `stratactl dev demo`.
 
 ```bash
-stratabi-dev demo aws install      # confirm before creating anything (--yes to skip)
-stratabi-dev demo aws status
-stratabi-dev demo aws remove
+stratabi demo aws install      # confirm before creating anything (--yes to skip)
+stratabi demo aws status
+stratabi demo aws remove
 ```
 
 **What it creates:** CSVs under `s3://<your-bucket>/demo/forgeworks/v1/`, an isolated
@@ -148,7 +148,7 @@ Glue database `stratabi_dev_demo` with explicit external tables (no crawler), an
 running Athena queries, may incur small AWS charges. **No data is transmitted to
 Shaleio.**
 
-**Remove it:** `stratabi-dev demo aws remove` deletes **only** the ForgeWorks demo
+**Remove it:** `stratabi demo aws remove` deletes **only** the ForgeWorks demo
 namespace (its S3 prefix, its Glue tables/database, its dashboard) — never the StrataBI
 Dev data plane or any non-demo data.
 
