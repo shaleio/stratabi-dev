@@ -65,7 +65,7 @@ INCLUDE_TREES = [
 # `tofu init` on linux, so a host-generated lock would fail checksum verification),
 # state, local tfvars, and junk.
 EXCLUDE = re.compile(
-    r"(^|/)\.terraform|\.tfstate|(^|/)terraform\.tfvars$|(^|/)__pycache__(/|$)|(^|/)\.git")
+    r"(^|/)\.terraform|\.tfstate|(^|/)terraform\.tfvars|(^|/)__pycache__(/|$)|(^|/)\.git")
 
 
 def _version() -> str:
