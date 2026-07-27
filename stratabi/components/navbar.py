@@ -9,13 +9,20 @@ import dash
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 import base64
+from pathlib import Path
+
+# Assets live inside the installed package (stratabi/assets), so resolve them
+# relative to this file — NOT the current working directory. A cwd-relative path
+# breaks when the app is launched from anywhere but the repo root (e.g. after
+# `pipx install stratabi`, where cwd is the user's home dir).
+_ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 
 '''define logo'''
 def encode_logo(path):
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
-logo_b64 = encode_logo("stratabi/assets/logo.png")
+logo_b64 = encode_logo(_ASSETS_DIR / "logo.png")
 
 
 '''define navbar'''

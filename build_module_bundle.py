@@ -50,14 +50,22 @@ INCLUDE_FILES = [
     ("README.md", "README.md"),
     ("config.json", "config/config.json"),
 ]
-# Directory trees: (source dir, dest prefix, glob).
+# Directory trees copied RECURSIVELY with structure preserved: (source dir, dest prefix).
+# The whole data-plane `infra/` tree ships as `tofu/` — not only the .tf files but the
+# Lambda sources, the prebuilt Lambda/layer .zip artifacts, and the seed JSON that the
+# tofu references via ${path.module}/lambda|build|bootstrap. Anything matching EXCLUDE
+# is dropped. Themes ship too, so ${path.module}/../stratabi/themes resolves.
 INCLUDE_TREES = [
-    ("infra", "tofu", "*.tf"),
-    ("infra", "tofu", "*.tftpl"),
-    ("stratabi/themes", "stratabi/themes", "*"),
+    ("infra", "tofu"),
+    ("stratabi/themes", "stratabi/themes"),
 ]
-# Never bundle these, even if matched above.
-EXCLUDE = re.compile(r"(\.terraform/|\.tfstate|\.tfstate\.|terraform\.tfvars$|\.zip$|__pycache__/)")
+# Never bundle these (matched against the path RELATIVE to each tree root). Note: we do
+# NOT exclude *.zip — the awswrangler Lambda layer and the prebuilt Lambda archives are
+# REQUIRED runtime inputs. We drop local provider cache + lock (the runner runs its own
+# `tofu init` on linux, so a host-generated lock would fail checksum verification),
+# state, local tfvars, and junk.
+EXCLUDE = re.compile(
+    r"(^|/)\.terraform|\.tfstate|(^|/)terraform\.tfvars$|(^|/)__pycache__(/|$)|(^|/)\.git")
 
 
 def _version() -> str:
@@ -73,13 +81,17 @@ def _collect() -> list[tuple[Path, str]]:
         if not p.is_file():
             raise SystemExit(f"error: required bundle file missing: {src}")
         items.append((p, dest))
-    for src_dir, dest_prefix, glob in INCLUDE_TREES:
+    for src_dir, dest_prefix in INCLUDE_TREES:
         base = ROOT / src_dir
         if not base.is_dir():
             raise SystemExit(f"error: required bundle dir missing: {src_dir}")
-        for p in sorted(base.glob(glob)):
-            if p.is_file() and not EXCLUDE.search(str(p)):
-                items.append((p, f"{dest_prefix}/{p.name}"))
+        for p in sorted(base.rglob("*")):
+            if not p.is_file():
+                continue
+            rel = p.relative_to(base).as_posix()
+            if EXCLUDE.search(rel):
+                continue
+            items.append((p, f"{dest_prefix}/{rel}"))
     # De-dupe by dest, keep sorted for determinism.
     seen: dict[str, Path] = {}
     for p, dest in items:

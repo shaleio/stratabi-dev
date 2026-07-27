@@ -1,14 +1,14 @@
 """StrataBI Developer Edition command-line entry point.
 
-Installed as the ``stratabi-dev`` console script (see pyproject.toml). Running
-``stratabi-dev`` with no arguments starts the local Dash app on a safe default
+Installed as the ``stratabi`` console script (see pyproject.toml). Running
+``stratabi`` with no arguments starts the local Dash app on a safe default
 host/port. ``--version``, ``--help`` and ``--check`` are handled WITHOUT importing
 the app package, so they never trigger the app's import-time AWS clients.
 
-    stratabi-dev                 # run on http://127.0.0.1:8050
-    stratabi-dev --check         # validate environment/config, then exit
-    stratabi-dev --host 0.0.0.0 --port 8060 --debug
-    stratabi-dev --version
+    stratabi                 # run on http://127.0.0.1:8050
+    stratabi --check         # validate environment/config, then exit
+    stratabi --host 0.0.0.0 --port 8060 --debug
+    stratabi --version
 """
 
 from __future__ import annotations
@@ -112,7 +112,7 @@ def _demo(args) -> int:
             from stratabi.app import app
         except Exception as exc:  # noqa: BLE001
             print(f"generated the demo, but the app could not start: {exc}")
-            print("Run `stratabi-dev --check` to diagnose, then `stratabi-dev`.")
+            print("Run `stratabi --check` to diagnose, then `stratabi`.")
             return 1
         url = f"http://{args.host}:{args.port}"
         print(f"  serving on {url}  (Ctrl-C to stop)")
@@ -229,7 +229,7 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:  # noqa: BLE001
         name = type(exc).__name__
         print(f"error: could not start StrataBI Dev ({name}): {exc}", file=sys.stderr)
-        print("hint: run `stratabi-dev --check` to see what's missing "
+        print("hint: run `stratabi --check` to see what's missing "
               "(usually AWS_REGION / credentials / STRATABI_* settings).",
               file=sys.stderr)
         return 1

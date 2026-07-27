@@ -14,7 +14,7 @@ from botocore.exceptions import ClientError
 from datetime import date
 
 from stratabi import __version__ as STRATABI_VERSION
-from ..core.s3_loader import (
+from stratabi.core.s3_loader import (
     dashboard_id_from_value,
     load_dashboard_json,
     list_dashboard_options,
@@ -22,7 +22,7 @@ from ..core.s3_loader import (
     resolve_actor_token,
     record_dashboard_recent,
 )
-from ..core import ai_helpers
+from stratabi.core import ai_helpers
 
 register_page(__name__, path="/builder")
 

@@ -2,7 +2,23 @@
 
 All notable changes. Versions follow `stratabi/__init__.py`.
 
-## [Unreleased]
+## [1.0.1] — 2026-07-26
+
+### Fixed
+- Resolve the navbar logo (and packaged assets) relative to the package rather than the
+  working directory — fixes a startup crash after `pipx install` (`stratabi/assets/logo.png`
+  not found when launched from outside the repo root).
+- Use absolute imports in the `pages/` modules so Dash `use_pages` no longer raises
+  "attempted relative import beyond top-level package" on an installed package.
+- `build_module_bundle.py` ships the full `infra/` tree into the bundle's `tofu/`
+  (Lambda sources, prebuilt Lambda/layer archives, seed JSON) so the StrataCI runner's
+  `tofu plan` resolves every `${path.module}` file reference.
+
+### Changed
+- CLI help/hint text refers to the `stratabi` command (dropped stale `stratabi-dev`
+  references).
+
+## [1.0.0] — 2026-07-26
 
 ### Added
 - `pyproject.toml` — pipx-installable as `stratabi-dev`; console script

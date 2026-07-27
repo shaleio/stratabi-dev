@@ -6,7 +6,7 @@ from dash import Patch
 import os
 import boto3
 
-from ..core.s3_loader import (
+from stratabi.core.s3_loader import (
     dashboard_id_from_value,
     load_dashboard_json,
     list_dashboards_from_s3,
@@ -15,13 +15,13 @@ from ..core.s3_loader import (
     parse_s3_location,
     s3_uri,
 )
-from ..core.runner import execute_tile
-from ..core.renderer import render_block
-from ..core.status_store import get_dashboard_statuses
+from stratabi.core.runner import execute_tile
+from stratabi.core.renderer import render_block
+from stratabi.core.status_store import get_dashboard_statuses
 import time
 from datetime import date
 from copy import deepcopy
-from ..core.source_resolver import SourceResolver
+from stratabi.core.source_resolver import SourceResolver
 
 
 register_page(__name__, path="/dashboard")
