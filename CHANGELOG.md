@@ -2,6 +2,23 @@
 
 All notable changes. Versions follow `stratabi/__init__.py`.
 
+## [1.0.2] — 2026-07-29
+
+### Added
+- Developer Edition **splash page** at `/` (`pages/home.py`): orients a developer
+  and links to the Builder and Dashboard; the navbar logo now links home.
+- **`stratabi dashboards {push,ls,rm}`** — a thin, AWS-native funnel that validates a
+  dashboard against the packaged schema and uploads it to `analyst/dashboards/`.
+  Added `jsonschema` dependency.
+- Sample dashboards under `samples/dashboards/` (a static one and an Athena template).
+
+### Fixed
+- **Default dashboard renders again**: rewrote `infra/bootstrap/default.json` to the
+  current schema (`block:{type,config}`, `position:{row,order,width}`) — the old shape
+  was silently skipped by the renderer.
+- Navbar "Builder" link pointed at the empty root (`/`); now points at `/builder`.
+- Quieted werkzeug's per-request access log (override with `STRATABI_ACCESS_LOG=1`).
+
 ## [1.0.1] — 2026-07-26
 
 ### Fixed

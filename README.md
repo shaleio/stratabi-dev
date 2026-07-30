@@ -104,6 +104,24 @@ stratabi [--host 127.0.0.1] [--port 8050] [--debug] [--check] [--version]
   settings, then exits — no network calls.
 - Health endpoint: `GET /healthz` → `{"status":"ok"}`.
 
+## Dashboards
+
+Dashboards are declarative JSON (see `dashboard.schema.json`) stored in your system
+bucket under `analyst/dashboards/`. The app renders them on the **Dashboard** page;
+the **Builder** authors them. Two ways to get JSON into the bucket:
+
+```bash
+# thin, app-side funnel — validates against the schema, uploads to analyst/dashboards/
+stratabi dashboards push my-dashboard.json      # (name comes from the filename)
+stratabi dashboards ls
+stratabi dashboards rm my-dashboard
+```
+
+For version-controlled, dashboards-as-code sync (pull/edit/git/push, with a git
+registry), use the control-plane tool: `stratactl dashboards …`. Start from the
+`samples/dashboards/` templates (a fully static one that renders with no AWS, and an
+Athena-backed template against the ForgeWorks demo database).
+
 ## Requirements
 
 - **Python 3.11+**

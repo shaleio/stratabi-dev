@@ -1,0 +1,63 @@
+{
+  "name": "ForgeWorks (Athena sample)",
+  "version": "1.0.0",
+  "description": "Athena-backed sample. Runs against the ForgeWorks demo database `stratabi_dev_demo` — install it first with `stratabi demo aws install`. Change `exec.database` and the SQL to point at your own Glue tables.",
+  "settings": { "interval_enabled": false, "interval_ms": 60000 },
+  "layout": [
+    {
+      "id": "notice",
+      "position": { "row": 0, "order": 0, "width": 12 },
+      "block": {
+        "type": "markdown",
+        "config": {
+          "content": "### Athena-backed sample\n\nTiles below execute SQL against Glue database `stratabi_dev_demo` (the ForgeWorks demo). Each tile has an `exec` of type `athena` and a `query`; the Plotly chart binds result columns via `\"@x\"` / `\"@y\"`. Swap the database + SQL for your own data."
+        }
+      }
+    },
+    {
+      "id": "kpis",
+      "title": "Key metrics",
+      "position": { "row": 1, "order": 0, "width": 12 },
+      "exec": { "type": "athena", "database": "stratabi_dev_demo" },
+      "load": { "mode": "load_once" },
+      "query": { "sql": "SELECT round(sum(order_total),2) AS revenue, count(*) AS orders, round(avg(order_total),2) AS avg_order_value FROM orders WHERE status <> 'canceled'" },
+      "block": { "type": "table", "config": { "page_size": 5 } }
+    },
+    {
+      "id": "revenue_trend",
+      "title": "Revenue trend",
+      "position": { "row": 2, "order": 0, "width": 8 },
+      "exec": { "type": "athena", "database": "stratabi_dev_demo" },
+      "load": { "mode": "load_once" },
+      "query": { "sql": "SELECT substr(cast(order_date as varchar),1,7) AS x, round(sum(order_total),2) AS y FROM orders WHERE status <> 'canceled' GROUP BY 1 ORDER BY 1" },
+      "block": {
+        "type": "plotly",
+        "config": {
+          "height": "340px",
+          "figure": {
+            "data": [{ "type": "scatter", "mode": "lines+markers", "x": "@x", "y": "@y" }],
+            "layout": { "margin": { "t": 10, "l": 60, "r": 10, "b": 40 }, "yaxis": { "title": "Revenue ($)" }, "xaxis": { "title": "" } }
+          }
+        }
+      }
+    },
+    {
+      "id": "revenue_by_region",
+      "title": "Revenue by region",
+      "position": { "row": 2, "order": 1, "width": 4 },
+      "exec": { "type": "athena", "database": "stratabi_dev_demo" },
+      "load": { "mode": "load_once" },
+      "query": { "sql": "SELECT region AS x, round(sum(order_total),2) AS y FROM orders WHERE status <> 'canceled' GROUP BY 1 ORDER BY 2 DESC" },
+      "block": {
+        "type": "plotly",
+        "config": {
+          "height": "340px",
+          "figure": {
+            "data": [{ "type": "bar", "x": "@x", "y": "@y" }],
+            "layout": { "margin": { "t": 10, "l": 60, "r": 10, "b": 60 }, "yaxis": { "title": "Revenue ($)" } }
+          }
+        }
+      }
+    }
+  ]
+}

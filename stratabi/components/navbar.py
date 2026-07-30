@@ -36,26 +36,30 @@ navbar = dbc.Navbar(
                 align="center",
                 className="g-0",
                 children=[
-                    # --- LOGO BADGE (Option 1) ---
+                    # --- LOGO BADGE (links home to the splash page) ---
                     dbc.Col(
-                        html.Div(
-                            html.Img(
-                                src=f"data:image/png;base64,{logo_b64}",
-                                height="38px",
+                        dcc.Link(
+                            html.Div(
+                                html.Img(
+                                    src=f"data:image/png;base64,{logo_b64}",
+                                    height="38px",
+                                    style={
+                                        "objectFit": "contain",
+                                        "zIndex": 10,
+                                    },
+                                ),
                                 style={
-                                    "objectFit": "contain",
-                                    "zIndex": 10,
+                                    "padding": "6px 10px",
+                                    "borderRadius": "12px",
+                                    "background": "rgba(255, 255, 255, 0.08)",
+                                    "backdropFilter": "blur(4px)",
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center",
                                 },
                             ),
-                            style={
-                                "padding": "6px 10px",
-                                "borderRadius": "12px",
-                                "background": "rgba(255, 255, 255, 0.08)",
-                                "backdropFilter": "blur(4px)",
-                                "display": "flex",
-                                "alignItems": "center",
-                                "justifyContent": "center",
-                            },
+                            href="/",
+                            style={"textDecoration": "none", "cursor": "pointer"},
                         ),
                         width="auto",
                     ),
@@ -64,7 +68,7 @@ navbar = dbc.Navbar(
                     dbc.Col(
                         dbc.Nav(
                             [
-                                dbc.NavLink("Builder", href="/", active="exact"),
+                                dbc.NavLink("Builder", href="/builder", active="exact"),
                                 dbc.NavLink("Dashboard", href="/dashboard", active="exact"),
                             ],
                             className="me-auto",

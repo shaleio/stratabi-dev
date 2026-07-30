@@ -26,6 +26,11 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Quiet werkzeug's per-request access log (a line per _dash-update-component POST);
+# keep WARNING+ so real problems still surface. Override with STRATABI_ACCESS_LOG=1.
+if os.getenv("STRATABI_ACCESS_LOG", "").strip().lower() not in ("1", "true", "yes", "on"):
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
+
 logger.info("Starting StrataBI")
 logger.info("STRATABI_SYSTEM_BUCKET=%s", os.getenv("STRATABI_SYSTEM_BUCKET"))
 logger.info("STRATABI_THEME_PREFIX=%s", os.getenv("STRATABI_THEME_PREFIX"))

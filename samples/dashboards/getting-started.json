@@ -1,0 +1,68 @@
+{
+  "name": "Getting Started",
+  "version": "1.0.0",
+  "description": "Static sample dashboard — renders with no AWS calls. Copy it as a starting point and push with `stratabi dashboards push`.",
+  "settings": { "interval_enabled": false, "interval_ms": 60000 },
+  "layout": [
+    {
+      "id": "intro",
+      "title": "Getting started",
+      "position": { "row": 0, "order": 0, "width": 12 },
+      "block": {
+        "type": "markdown",
+        "config": {
+          "content": "# Getting started\n\nThis is a **static** dashboard: every tile's data is baked into the JSON, so it renders without touching AWS. Use it as a template for layout — `position` is `{row, order, width}` (width is 1–12 Bootstrap columns; tiles in the same `row` sit side by side by `order`).\n\nTo make tiles pull live data, add an `exec` (`athena` / `lambda` / `cache`) and a `query`, and reference result columns in Plotly figures with `\"@column\"`. See the Athena sample for that."
+        }
+      }
+    },
+    {
+      "id": "line",
+      "title": "A line chart",
+      "position": { "row": 1, "order": 0, "width": 8 },
+      "block": {
+        "type": "plotly",
+        "config": {
+          "height": "340px",
+          "figure": {
+            "data": [{ "type": "scatter", "mode": "lines+markers", "x": ["Q1", "Q2", "Q3", "Q4"], "y": [12, 19, 23, 31] }],
+            "layout": { "margin": { "t": 10, "l": 60, "r": 10, "b": 40 }, "yaxis": { "title": "Value" }, "xaxis": { "title": "" } }
+          }
+        }
+      }
+    },
+    {
+      "id": "bar",
+      "title": "A bar chart",
+      "position": { "row": 1, "order": 1, "width": 4 },
+      "block": {
+        "type": "plotly",
+        "config": {
+          "height": "340px",
+          "figure": {
+            "data": [{ "type": "bar", "x": ["A", "B", "C"], "y": [9, 14, 6] }],
+            "layout": { "margin": { "t": 10, "l": 40, "r": 10, "b": 40 } }
+          }
+        }
+      }
+    },
+    {
+      "id": "static_table",
+      "title": "A static table",
+      "position": { "row": 2, "order": 0, "width": 12 },
+      "block": {
+        "type": "plotly",
+        "config": {
+          "height": "260px",
+          "figure": {
+            "data": [{
+              "type": "table",
+              "header": { "values": ["Region", "Orders", "Revenue"], "align": "left" },
+              "cells": { "values": [["West", "South", "Midwest"], [640, 480, 370], ["$128k", "$96k", "$74k"]], "align": "left" }
+            }],
+            "layout": { "margin": { "t": 10, "l": 5, "r": 5, "b": 5 } }
+          }
+        }
+      }
+    }
+  ]
+}

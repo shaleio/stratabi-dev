@@ -1,16 +1,60 @@
 {
-    "settings": {
-      "interval_enabled": false,
-      "interval_ms": 60000
-    },
-    "layout": [
-      {
-        "id": "welcome_markdown",
+  "name": "StrataBI",
+  "version": "1.0.0",
+  "description": "Default StrataBI dashboard. Replace it, or add your own with `stratabi dashboards push`.",
+  "settings": { "interval_enabled": false, "interval_ms": 60000 },
+  "layout": [
+    {
+      "id": "welcome",
+      "title": "Welcome",
+      "position": { "row": 0, "order": 0, "width": 12 },
+      "block": {
         "type": "markdown",
-        "title": "Welcome to StrataBI",
-        "position": { "x": 0, "y": 0, "w": 12, "h": 2 },
-        "text": "### 🚀 StrataBI is running!\n\nEdit this JSON to build your first dashboard."
+        "config": {
+          "content": "## 🐒🔨 StrataBI Developer Edition\n\nThis default dashboard renders from `analyst/dashboards/default.json` in your system bucket.\n\n- **Author** dashboards in the **Builder**, or push JSON straight to your bucket with `stratabi dashboards push`.\n- **Run** them from the **Dashboard** page — tiles execute against Athena and your Lambda modules, with async status and downloadable artifacts.\n\nThe two charts below are baked into this JSON (no AWS calls) to confirm rendering end-to-end."
+        }
       }
-    ]
-  }
-  
+    },
+    {
+      "id": "sample_bar",
+      "title": "Revenue by region (sample)",
+      "position": { "row": 1, "order": 0, "width": 6 },
+      "block": {
+        "type": "plotly",
+        "config": {
+          "height": "320px",
+          "figure": {
+            "data": [{ "type": "bar", "x": ["West", "South", "Midwest", "Northeast"], "y": [128000, 96000, 74000, 61000] }],
+            "layout": { "margin": { "t": 10, "l": 64, "r": 10, "b": 40 }, "yaxis": { "title": "Revenue ($)" }, "xaxis": { "title": "" } }
+          }
+        }
+      }
+    },
+    {
+      "id": "sample_line",
+      "title": "Monthly orders (sample)",
+      "position": { "row": 1, "order": 1, "width": 6 },
+      "block": {
+        "type": "plotly",
+        "config": {
+          "height": "320px",
+          "figure": {
+            "data": [{ "type": "scatter", "mode": "lines+markers", "x": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"], "y": [420, 460, 505, 540, 590, 640] }],
+            "layout": { "margin": { "t": 10, "l": 64, "r": 10, "b": 40 }, "yaxis": { "title": "Orders" }, "xaxis": { "title": "" } }
+          }
+        }
+      }
+    },
+    {
+      "id": "next_steps",
+      "title": "Add your own",
+      "position": { "row": 2, "order": 0, "width": 12 },
+      "block": {
+        "type": "markdown",
+        "config": {
+          "content": "### Next steps\n\n1. Write a dashboard JSON that validates against `dashboard.schema.json`.\n2. `stratabi dashboards push my-dashboard.json` — uploads it to `analyst/dashboards/`.\n3. Open it from the **Dashboard** page.\n\nFor a live Athena-backed example, run `stratabi demo aws install` to load the **ForgeWorks** dataset and dashboard."
+        }
+      }
+    }
+  ]
+}

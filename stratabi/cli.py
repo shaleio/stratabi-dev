@@ -74,6 +74,20 @@ def _build_parser() -> argparse.ArgumentParser:
         ap.add_argument("--profile", default=None)
         ap.add_argument("--region", default=None)
         ap.add_argument("--yes", action="store_true")
+
+    # Dashboards funnel — validate + push JSON into analyst/dashboards/ in your bucket
+    # (AWS-native; the app loads dashboards from S3 in STRATABI_MODE=aws).
+    dash = sub.add_parser("dashboards",
+                          help="Manage dashboards in your system bucket (analyst/dashboards/).")
+    dashsub = dash.add_subparsers(dest="dash_action", required=True)
+    dpush = dashsub.add_parser("push", help="Validate + upload dashboard JSON to S3.")
+    dpush.add_argument("paths", nargs="+",
+                       help="Dashboard .json file(s), or a directory of them.")
+    dpush.add_argument("--name", default=None,
+                       help="Override the stored name (single file only). e.g. --name default")
+    dashsub.add_parser("ls", help="List dashboards in the system bucket.")
+    drm = dashsub.add_parser("rm", help="Remove a dashboard by name.")
+    drm.add_argument("name", help="Dashboard name (with or without .json).")
     return p
 
 
@@ -205,8 +219,32 @@ def _check() -> int:
     return 0 if ok else 1
 
 
+def _dashboards(args) -> int:
+    from stratabi import dashboards_admin as da
+    action = args.dash_action
+    if action == "push":
+        return da.push(args.paths, name=getattr(args, "name", None))
+    if action == "ls":
+        return da.ls()
+    if action == "rm":
+        return da.rm(args.name)
+    return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+
+    if getattr(args, "command", None) == "dashboards":
+        _load_env()
+        from stratabi.dashboards_admin import DashboardError
+        try:
+            rc = _dashboards(args)
+        except DashboardError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        if rc == 0 and args.dash_action in ("push", "rm"):
+            print("done 🐒🔨")
+        return rc
 
     if getattr(args, "command", None) == "demo":
         _load_env()
