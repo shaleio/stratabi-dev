@@ -41,6 +41,17 @@ provided **without support and without any SLA**.
 
 ## Two ways to install
 
+> **New to AWS or Python tooling?** Follow the **[Quickstart](https://github.com/shaleio/stratabi-dev/blob/main/QUICKSTART.md)** — it takes
+> you from zero (no Python, no AWS account, no OpenTofu) to live dashboards in ~15 minutes,
+> with every dependency, credential, and region step walked through per-OS.
+
+> **pip vs pipx.** We recommend **pipx** — it installs `stratabi` in its own isolated
+> environment (so it never collides with your other Python packages) and puts the
+> `stratabi` command on your PATH. `pip install stratabi` *also works*, but it installs
+> into whatever Python/venv is active — its dependencies mix with yours, and on some
+> setups the console script lands in a `Scripts`/`bin` dir that isn't on PATH. If you use
+> pip and `stratabi` "isn't found," that's the PATH issue; pipx sidesteps it.
+
 ### A. pipx (local runtime)
 
 ```bash
