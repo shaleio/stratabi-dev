@@ -41,9 +41,10 @@ provided **without support and without any SLA**.
 
 ## Two ways to install
 
-> **New to AWS or Python tooling?** Follow the **[Quickstart](https://github.com/shaleio/stratabi-dev/blob/main/QUICKSTART.md)** — it takes
-> you from zero (no Python, no AWS account, no OpenTofu) to live dashboards in ~15 minutes,
-> with every dependency, credential, and region step walked through per-OS.
+> **New to AWS or Python tooling?** The full **[Installation Guide](https://shaleio.com/docs/installation.html)**
+> on shaleio.com walks through every layer per-OS (Python, pipx, AWS credentials, OpenTofu)
+> and gets you from an AWS-ready machine to a live dashboard in about 15 minutes. This
+> README keeps only the fast path below.
 
 > **pip vs pipx.** We recommend **pipx** — it installs `stratabi` in its own isolated
 > environment (so it never collides with your other Python packages) and puts the
