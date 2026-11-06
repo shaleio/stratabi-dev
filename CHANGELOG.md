@@ -28,7 +28,8 @@ All notable changes. Versions follow `stratabi/__init__.py`.
   is usable in a narrow/portrait browser window (e.g. a tool opening `127.0.0.1`).
 
 ### Docs
-- Fixed misaligned vertical bars in the architecture box diagram (README).
+- Reworked the architecture diagram (README) to drop the box verticals, which PyPI's
+  web font rendered at a different width and misaligned. Now uses horizontal rules only.
 
 ## [1.0.3] — 2026-08-02
 

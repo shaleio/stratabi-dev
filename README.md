@@ -7,12 +7,12 @@ process on `localhost:8050` — no Docker, no Fargate) wired to a real AWS data 
 module development, dashboard authoring, and ad-hoc analytics.
 
 ```
-your laptop / AWS WorkSpaces                your AWS account
-┌────────────────────────┐                  ┌─────────────────────────────────┐
-│  stratabi              │  boto3 (creds)   │  S3 · Athena · Glue             │
-│  http://127.0.0.1:8050 │ ─────────────▶   │  Lambda (async + status)        │
-│  (Dash / Plotly)       │                  │  DynamoDB (status + registries) │
-└────────────────────────┘                  └─────────────────────────────────┘
+your laptop / AWS WorkSpaces                      your AWS account
+────────────────────────────                      ─────────────────────────────────
+  stratabi                                          S3 · Athena · Glue
+  http://127.0.0.1:8050       ──boto3 creds──▶      Lambda (async + status)
+  (Dash / Plotly)                                   DynamoDB (status + registries)
+────────────────────────────                      ─────────────────────────────────
 ```
 
 ## License — please read first
