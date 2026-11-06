@@ -130,7 +130,7 @@ def _demo(args) -> int:
             return 1
         url = f"http://{args.host}:{args.port}"
         print(f"  serving on {url}  (Ctrl-C to stop)")
-        app.run(host=args.host, port=args.port, debug=args.debug)
+        app.run(host=args.host, port=args.port, debug=args.debug, threaded=True)
         return 0
     if action == "aws":
         return _demo_aws(args)
@@ -278,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.host == "0.0.0.0":
         print("  note: bound to 0.0.0.0 — reachable from your network. This is a "
               "developer tool with no built-in auth; do not expose it publicly.")
-    app.run(host=args.host, port=args.port, debug=args.debug)
+    app.run(host=args.host, port=args.port, debug=args.debug, threaded=True)
     return 0
 
 

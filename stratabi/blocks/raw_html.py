@@ -21,14 +21,24 @@ class RawHTMLBlock(Block):
 
         if not content:
             raise ValueError("Raw HTML block missing html content.")
-        
-        return html.Iframe(
-            srcDoc=content,
-            style={
+
+        # Sandbox the iframe so embedded scripts can't reach the parent app's origin
+        # (cookies, localStorage, same-origin APIs). Default deliberately OMITS
+        # allow-same-origin: scripts still run (charts, viz), but in a null origin, so a
+        # malicious/compromised raw_html can't hijack the session. Override per block via
+        # `sandbox` (set it to null to opt out entirely for a fully trusted embed).
+        iframe_kwargs = {
+            "srcDoc": content,
+            "style": {
                 "width": "100%",
                 "height": self.config.get("height", "500px"),
                 "border": "0",
                 **self.config.get("style", {}),
             },
-        )
+        }
+        sandbox = self.config.get("sandbox", "allow-scripts allow-popups")
+        if sandbox is not None:
+            iframe_kwargs["sandbox"] = sandbox
+
+        return html.Iframe(**iframe_kwargs)
 

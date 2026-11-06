@@ -36,7 +36,8 @@ class PlotlyBlock(Block):
             figure=fig,
             config={
                 "responsive": True,
-                "displayModeBar": True,
+                "displayModeBar": "hover",
+                "displaylogo": False,
                 **self.config.get("graph_config", {}),
             },
             style={

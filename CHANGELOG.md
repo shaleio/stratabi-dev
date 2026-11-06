@@ -2,6 +2,46 @@
 
 All notable changes. Versions follow `stratabi/__init__.py`.
 
+## [1.7.0] — 2026-11-06
+
+### Security
+- **Closed a remote-code-execution footgun in `python -m stratabi.app`.** The
+  `__main__` block ran the dev server with `debug=True` on `0.0.0.0`, which exposes
+  the Werkzeug interactive debugger (arbitrary code execution) on every interface.
+  It now binds `127.0.0.1` with debug **off**, matching the `stratabi` CLI; opt in
+  per-env with `STRATABI_HOST` / `STRATABI_DEBUG`. The supported entry point remains
+  the `stratabi` command.
+- **`raw_html` block now sandboxes its iframe** (`sandbox="allow-scripts allow-popups"`,
+  omitting `allow-same-origin`) so embedded scripts run in a null origin and cannot
+  reach the app's cookies/localStorage. Override per block via `sandbox` (or `null`
+  to opt out). Brings the community block in line with the enterprise runtime.
+
+### Changed
+- All dev-server launch paths (`stratabi`, `stratabi demo quick`, and the
+  `stratabi.app` `__main__` fallback) now run the Flask server with `threaded=True`
+  so a slow tile no longer blocks concurrent requests from the same browser.
+
+### Changed (parity with enterprise runtime)
+- Plotly and Plotly-resampler blocks now hide the Plotly logo (`displaylogo: false`)
+  and show the mode bar on hover instead of always, matching the enterprise blocks.
+- Responsive navbar: collapses to a hamburger below the `md` breakpoint so the app
+  is usable in a narrow/portrait browser window (e.g. a tool opening `127.0.0.1`).
+
+### Docs
+- Fixed misaligned vertical bars in the architecture box diagram (README).
+
+## [1.0.3] — 2026-08-02
+
+### Added
+- **Quickstart** in the README: a 0-to-dashboard walkthrough (install → `--check`
+  → `stratactl dev install` → `stratabi dashboards push`).
+- Guidance on **`pipx` vs `pip`** for installing the Developer Edition, and how to
+  uninstall the data plane via `bootstrap --destroy`.
+
+### Changed
+- README now points to the website Installation Guide as the canonical source;
+  removed the superseded `QUICKSTART.md`.
+
 ## [1.0.2] — 2026-07-29
 
 ### Added

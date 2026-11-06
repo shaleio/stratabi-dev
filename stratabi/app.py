@@ -328,5 +328,11 @@ clientside_callback(
     State("dashboard-runtime-session-store", "data"),
 )
 
-if __name__=='__main__':
-    app.run(host="0.0.0.0", port=8050, debug=True)
+if __name__ == '__main__':
+    # Safe local defaults (match the `stratabi` CLI): bind loopback only and keep debug OFF.
+    # debug=True enables the Werkzeug interactive debugger, which is remote code execution on
+    # any error page — unacceptable to expose, and 0.0.0.0 would expose it on every interface.
+    # Opt in explicitly via env for dev. (The normal entry point is the `stratabi` command.)
+    _debug = os.getenv("STRATABI_DEBUG", "").strip().lower() in ("1", "true", "yes", "on")
+    _host = os.getenv("STRATABI_HOST", "127.0.0.1")
+    app.run(host=_host, port=8050, debug=_debug, threaded=True)
