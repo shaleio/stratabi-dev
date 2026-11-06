@@ -2,7 +2,7 @@
 
 All notable changes. Versions follow `stratabi/__init__.py`.
 
-## [1.7.0] — 2026-11-06
+## [1.7.1] — 2026-11-06
 
 ### Security
 - **Closed a remote-code-execution footgun in `python -m stratabi.app`.** The
