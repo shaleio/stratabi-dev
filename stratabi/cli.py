@@ -49,6 +49,9 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Enable Dash debug mode (off by default).")
     p.add_argument("--check", action="store_true",
                    help="Validate environment/config and dependencies, then exit.")
+    p.add_argument("--online", action="store_true",
+                   help="With --check: also make live AWS calls (sts:GetCallerIdentity, "
+                        "s3:HeadBucket on the system bucket).")
 
     sub = p.add_subparsers(dest="command")  # optional; no command = run the app
 
@@ -158,65 +161,132 @@ def _demo_aws(args) -> int:
     return 0
 
 
-def _load_env() -> None:
-    """Load a local .env (dev convenience) if python-dotenv is available."""
+def _load_env() -> str | None:
+    """Load a local .env from the CURRENT working directory if present.
+
+    Returns the path of the .env that was loaded, or None.
+
+    Note: bare ``load_dotenv()`` resolves the file by walking up from the *calling
+    module's* directory — which, for a pipx/pip install, is site-packages, not the
+    user's project folder. We force the search to start at the cwd so the documented
+    "write .env, then run stratabi here" flow actually works when installed.
+    """
     try:
-        from dotenv import load_dotenv
-        load_dotenv()
-    except Exception:
-        pass
+        from dotenv import load_dotenv, find_dotenv
+    except Exception as exc:  # python-dotenv not installed
+        print(f"note: python-dotenv unavailable, not loading .env ({exc})", file=sys.stderr)
+        return None
+    path = find_dotenv(usecwd=True)
+    if path:
+        load_dotenv(path)
+        return path
+    return None
 
 
-def _check() -> int:
+_DOCS_URL = "https://shaleio.com/docs/developer-edition"
+
+
+def _tag(flag: bool) -> str:
+    # Fixed-width status tags so the text after them lines up: both are 6 chars.
+    return "[ok]  " if flag else "[FAIL]"
+
+
+def _check(online: bool = False) -> int:
     """Lightweight preflight: dependencies, AWS credential/region presence, and the
-    required STRATABI_* settings. Never makes a network call; reports actionably."""
-    _load_env()
+    required STRATABI_* settings. No network calls unless --online; reports actionably."""
+    env_path = _load_env()
     ok = True
 
     print(f"stratabi {_VERSION}")
+    print(f"  {'[ok]  ' if env_path else '[--]  '} .env: "
+          f"{env_path if env_path else f'none found in {os.getcwd()}'}")
 
     # 1) Core runtime imports (surfaces a broken/thin install clearly).
     try:
         import dash  # noqa: F401
         import plotly  # noqa: F401
         import pandas  # noqa: F401
-        print("  [ok]  runtime dependencies import (dash, plotly, pandas)")
+        print(f"  {_tag(True)} runtime dependencies import (dash, plotly, pandas)")
     except Exception as exc:
         ok = False
-        print(f"  [FAIL] runtime dependency import failed: {exc}")
-        print("         fix: pipx install 'stratabi-dev'  (or pip install -e .)")
+        print(f"  {_tag(False)} runtime dependency import failed: {exc}")
+        print("         fix: pipx install stratabi   (or `pip install -e .` in a checkout)")
 
-    # 2) AWS credentials + region (via the standard provider chain; no API call).
+    # 2) AWS credentials + region (via the standard provider chain). Each hint prints
+    #    directly under its own line.
+    region = None
     try:
         import botocore.session
         sess = botocore.session.get_session()
         region = sess.get_config_variable("region") or os.getenv("AWS_REGION") \
             or os.getenv("AWS_DEFAULT_REGION")
+        # Region is not hard-required: the runtime defaults to us-east-1. Report it as a
+        # note, not a failure, but say it's a fallback.
+        if region:
+            print(f"  {_tag(True)} AWS region: {region}")
+        else:
+            print("  [--]   AWS region: (unset) — the app will default to us-east-1")
+            print("         set AWS_REGION (or AWS_PROFILE) to choose a region explicitly")
+
         creds = sess.get_credentials()
-        print(f"  [{'ok' if region else 'FAIL'}]  AWS region: {region or '(unset)'}")
-        print(f"  [{'ok' if creds else 'FAIL'}]  AWS credentials: "
-              f"{'found via provider chain' if creds else 'NOT found'}")
-        ok = ok and bool(region) and bool(creds)
-        if not region:
-            print("         fix: set AWS_REGION (or AWS_PROFILE) in your environment/.env")
-        if not creds:
-            print("         fix: configure an AWS profile or export AWS_ACCESS_KEY_ID/…")
+        if creds:
+            print(f"  {_tag(True)} AWS credentials: found via provider chain")
+        else:
+            ok = False
+            print(f"  {_tag(False)} AWS credentials: NOT found")
+            print("         fix: configure an AWS profile or SSO, or export "
+                  "AWS_ACCESS_KEY_ID/… (temporary STS creds work)")
     except Exception as exc:
         ok = False
-        print(f"  [FAIL] could not evaluate AWS configuration: {exc}")
+        print(f"  {_tag(False)} could not evaluate AWS configuration: {exc}")
 
     # 3) Required data-plane settings.
     missing = [k for k in _REQUIRED_ENV if not os.getenv(k)]
     if missing:
         ok = False
-        print(f"  [FAIL] missing STRATABI_* settings: {', '.join(missing)}")
-        print("         fix: run `stratactl dev install` (or `tofu apply` in infra/) and")
-        print("              write the outputs into your .env (see README).")
+        print(f"  {_tag(False)} missing STRATABI_* settings: {', '.join(missing)}")
+        print("         fix: run `stratactl dev install` (or `tofu apply` in infra/), then")
+        print(f"              append the outputs to your .env. Variable reference: {_DOCS_URL}")
     else:
-        print("  [ok]  required STRATABI_* settings present")
+        print(f"  {_tag(True)} required STRATABI_* settings present")
 
-    print(("PASS 🐒🔨" if ok else "FAIL — resolve the items above before running."))
+    # 4) Optional live AWS checks.
+    if online:
+        ok = _check_online(region) and ok
+
+    print(("PASS 🐒🔨" if ok
+           else f"FAIL — resolve the items above before running. Docs: {_DOCS_URL}"))
     return 0 if ok else 1
+
+
+def _check_online(region: str | None) -> bool:
+    """Live AWS reachability checks (only run under `--check --online`): confirm the
+    credentials actually work and the system bucket is reachable."""
+    try:
+        import boto3
+    except Exception as exc:
+        print(f"  {_tag(False)} --online: boto3 unavailable: {exc}")
+        return False
+
+    ok = True
+    kwargs = {"region_name": region} if region else {}
+
+    try:
+        ident = boto3.client("sts", **kwargs).get_caller_identity()
+        print(f"  {_tag(True)} sts:GetCallerIdentity -> account {ident.get('Account')}")
+    except Exception as exc:
+        ok = False
+        print(f"  {_tag(False)} sts:GetCallerIdentity failed: {exc}")
+
+    bucket = os.getenv("STRATABI_SYSTEM_BUCKET")
+    if bucket:
+        try:
+            boto3.client("s3", **kwargs).head_bucket(Bucket=bucket)
+            print(f"  {_tag(True)} s3:HeadBucket {bucket}")
+        except Exception as exc:
+            ok = False
+            print(f"  {_tag(False)} s3:HeadBucket {bucket} failed: {exc}")
+    return ok
 
 
 def _dashboards(args) -> int:
@@ -256,7 +326,7 @@ def main(argv: list[str] | None = None) -> int:
         return rc
 
     if args.check:
-        return _check()
+        return _check(online=getattr(args, "online", False))
 
     _load_env()
     # Import the app only on the run path — this is where the app's import-time AWS

@@ -18,10 +18,13 @@ from stratabi.components.navbar import navbar
 from stratabi.core.registry import *
 from stratabi.core.s3_loader import resolve_actor_token
 import logging
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-# Load AWS creds + STRATABI_* config from a local .env if present (dev convenience).
-load_dotenv()
+# Load AWS creds + STRATABI_* config from a local .env in the CURRENT working
+# directory if present. find_dotenv(usecwd=True) is required: a bare load_dotenv()
+# searches from this file's directory (site-packages under a pipx/pip install),
+# so it would never see the user's project .env. See STRATABI_FIXES #1.
+load_dotenv(find_dotenv(usecwd=True))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -165,6 +168,14 @@ app = dash.Dash(
     # (BASE + ALPINE => ag-theme-alpine + ag-theme-alpine-dark) needed by v33
     # legacy themes (see blocks/table.py theme:"legacy").
     external_stylesheets=[THEME_STYLESHEET, dag.themes.BASE, dag.themes.ALPINE],
+    # Dash auto-serves every .js under assets/ on EVERY page. The Monaco editor ships
+    # as AMD modules (Vite-hashed chunks, workers, editor.main.js, nls.messages) that
+    # must be loaded by their own loader (00_monaco_loader.js), only on the Builder —
+    # NOT injected as plain scripts app-wide (that causes "define is not defined" on
+    # every page load and duplicate worker definitions). assets_ignore matches basenames
+    # and keeps only the loader + static assets auto-served; the hashed chunks are left
+    # for the Monaco loader to pull in on demand.
+    assets_ignore=r"(.+-[A-Za-z0-9][\w-]{5,}\.js$)|(^editor\.main\.js$)|(^monaco\.contribution\.js$)|(^nls\.messages\..+\.js$)",
     suppress_callback_exceptions=True,
     update_title="Building...",
     server = server

@@ -390,6 +390,14 @@ resource "aws_s3_object" "default_dashboard" {
   source       = "${path.module}/bootstrap/default.json"
   content_type = "application/json"
   etag         = filemd5("${path.module}/bootstrap/default.json")
+
+  # Seed-once: the default dashboard is a starting point the user is expected to edit
+  # in place. Without this, every `dev install` shows "will be updated in-place" and
+  # clobbers their edits back to the bundled copy. Ignore post-create drift so the
+  # object is created if missing but never overwritten on subsequent applies.
+  lifecycle {
+    ignore_changes = [source, etag, content, content_type]
+  }
 }
 
 resource "aws_s3_object" "module_prefix" {

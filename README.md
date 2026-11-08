@@ -41,7 +41,7 @@ provided **without support and without any SLA**.
 
 ## Two ways to install
 
-> **New to AWS or Python tooling?** The full **[Installation Guide](https://shaleio.com/docs/installation.html)**
+> **New to AWS or Python tooling?** The full **[Installation Guide](https://shaleio.com/docs/installation)**
 > on shaleio.com walks through every layer per-OS (Python, pipx, AWS credentials, OpenTofu)
 > and gets you from an AWS-ready machine to a live dashboard in about 15 minutes. This
 > README keeps only the fast path below.

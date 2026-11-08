@@ -33,7 +33,8 @@ def load_dashboards_local():
 
 
 def load_dashboards_s3():
-    s3 = get_s3_client()
+    import boto3
+    s3 = boto3.client("s3")
     prefix = config.DASHBOARD_PREFIX
 
     resp = s3.list_objects_v2(

@@ -2,6 +2,37 @@
 
 All notable changes. Versions follow `stratabi/__init__.py`.
 
+## [1.7.2] — 2026-11-07
+
+Fixes from a first-time new-user install test (pipx, Windows + Linux).
+
+### Fixed
+- **`.env` is now loaded when installed via pipx/pip.** `load_dotenv()` searched from
+  the installed package directory (site-packages), so a `.env` in the user's working
+  directory was ignored and `--check` reported missing `STRATABI_*` even when the file
+  was correct. Both the CLI and the app now use `find_dotenv(usecwd=True)`, and
+  `--check` prints which `.env` it loaded (or "none found in <cwd>").
+- **`stratabi demo quick` (no-AWS demo) now shows its dashboard.** The dashboard/builder
+  pickers always read from S3; in local mode they now read the on-disk demo dashboard
+  directory, so the ForgeWorks demo lists and renders with no AWS configured.
+- **Builder → "LLM Contract" no longer crashes.** Restored `load_core_contract()` /
+  `load_local_schema_text()` (and the missing module `logger`) in `ai_helpers`, and the
+  core LLM contract (`data/docs/llm_contract.txt`) now ships in the wheel.
+- Fixed an undefined `get_s3_client` reference in `loader.load_dashboards_s3`.
+
+### Changed
+- Monaco editor assets are no longer auto-injected on every page (`assets_ignore`),
+  eliminating the `define is not defined` console spam and duplicate worker definitions;
+  the editor loads only on the Builder via its own loader.
+- `--check` polish: each fix hint prints under its own line, aligned status tags, says
+  when the region defaults to `us-east-1`, links the docs, and fixes the install hint
+  (`stratabi`, not `stratabi-dev`). New `--check --online` runs `sts:GetCallerIdentity`
+  and `s3:HeadBucket` on the system bucket.
+
+### CI
+- Added a gating `ruff --select F821` (undefined-name) lint and a Windows smoke job to
+  the release workflow.
+
 ## [1.7.1] — 2026-11-06
 
 ### Security

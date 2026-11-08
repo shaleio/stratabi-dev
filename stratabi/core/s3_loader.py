@@ -791,6 +791,24 @@ def load_dashboard_json(
       - old dashboard_id values still resolve through _find_dashboard_key.
     """
     value = dashboard_key or "default"
+
+    # Local mode: resolve from the on-disk dashboard directory instead of S3. The
+    # dropdown value is a bare name (see list_dashboard_options); "default"/None picks
+    # the first available dashboard.
+    if config.MODE != "aws":
+        from stratabi.core import loader
+        dashboards = loader.load_dashboards_local()
+        if not dashboards:
+            return {}
+        if value == "default":
+            return next(iter(dashboards.values()))
+        name = value.split("/")[-1]
+        if name.endswith(".json"):
+            name = name[: -len(".json")]
+        if name in dashboards:
+            return dashboards[name]
+        raise KeyError(f"Dashboard '{name}' not found in local dashboard dir.")
+
     bucket = get_system_bucket()
 
     if value == "default":
@@ -1338,6 +1356,15 @@ def list_dashboard_options(
     start_date: str | None = None,
     end_date: str | None = None,
 ) -> list[dict[str, Any]]:
+    # Local mode (e.g. `stratabi demo quick`, STRATABI_MODE=local): dashboards live on
+    # disk, not S3. Build the same {label, value} options from the local directory so
+    # the no-AWS demo can populate the Dashboard/Builder pickers. value = bare name.
+    if config.MODE != "aws":
+        from stratabi.core import loader
+        return [
+            {"label": name, "value": name}
+            for name in sorted(loader.load_dashboards_local().keys())
+        ]
     return list_dashboards_from_s3(
         user_id=user_id,
         start_date=start_date,

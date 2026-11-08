@@ -21,7 +21,11 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install build tooling
-        run: python -m pip install --upgrade build twine pytest
+        run: python -m pip install --upgrade build twine pytest ruff
+      - name: Lint — undefined names (F821)
+        # Catches references to functions/vars that don't exist (e.g. a stripped
+        # helper still called from a page) BEFORE we ship. Gating, not advisory.
+        run: python -m ruff check --select F821 stratabi
       - name: Tests
         run: python -m pytest -q || echo "no tests yet"
       - name: Build wheel + sdist
@@ -49,6 +53,26 @@ jobs:
         with:
           name: stratabi-dev-dist
           path: dist/*
+
+  # Windows smoke test — the Developer Edition is supported on native Windows
+  # (PowerShell, no WSL). Build, clean-install the wheel, and run the console script.
+  windows-smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build + clean-install + preflight
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+          python -m venv $env:TEMP\clean
+          & "$env:TEMP\clean\Scripts\python.exe" -m pip install (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
+          & "$env:TEMP\clean\Scripts\stratabi.exe" --version
+          # --check exits non-zero without AWS/STRATABI_* — don't fail the job on that.
+          & "$env:TEMP\clean\Scripts\stratabi.exe" --check; if ($LASTEXITCODE -ne 0) { "preflight reported items (expected without AWS)" }
 
   # Publish the wheel + sdist to PyPI via Trusted Publishing (OIDC — no API token).
   # Gated by the `pypi` GitHub Environment: add required reviewers so a human approves

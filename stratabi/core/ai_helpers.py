@@ -6,8 +6,9 @@ import json
 import logging
 import os
 import re
-import urllib.request
 from importlib.resources import files
+
+logger = logging.getLogger("stratabi.ai")
 
 DEFAULT_MODEL_ID = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
 
@@ -17,6 +18,27 @@ DEFAULT_MODEL_ID = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
 # --------------------------------------------------------------------------
 def _docs_base_url() -> str:
     return os.getenv("STRATABI_DOCS_BASE_URL", "https://shaleio.com").strip().rstrip("/")
+
+
+# ---------------------------------------------------------------------------
+# Bundled resources (shipped in the wheel under stratabi/data/)
+# ---------------------------------------------------------------------------
+def load_core_contract() -> str:
+    """The core StrataBI LLM contract, read from the bundled data/docs copy."""
+    try:
+        return files("stratabi.data.docs").joinpath("llm_contract.txt").read_text(encoding="utf-8")
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("core llm_contract.txt load failed: %s", exc)
+        return "(core llm_contract.txt unavailable)"
+
+
+def load_local_schema_text() -> str:
+    """The bundled dashboard JSON schema as text (for best-effort validation)."""
+    try:
+        return files("stratabi.data.schemas").joinpath("dashboard.schema.json").read_text(encoding="utf-8")
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("bundled dashboard.schema.json load failed: %s", exc)
+        return ""
 
 
 # ---------------------------------------------------------------------------

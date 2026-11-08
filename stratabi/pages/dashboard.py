@@ -9,7 +9,7 @@ import boto3
 from stratabi.core.s3_loader import (
     dashboard_id_from_value,
     load_dashboard_json,
-    list_dashboards_from_s3,
+    list_dashboard_options,
     load_module_json,
     record_dashboard_recent,
     parse_s3_location,
@@ -1017,7 +1017,9 @@ def configure_interval(config):
     prevent_initial_call=False,
 )
 def populate_dashboard_selector(_, user_id, start_date, end_date, current_value):
-    options = list_dashboards_from_s3(
+    # Via list_dashboard_options so local mode (demo quick, STRATABI_MODE=local) is
+    # honored — it dispatches to the on-disk dashboard dir instead of S3.
+    options = list_dashboard_options(
         user_id=user_id,
         start_date=start_date,
         end_date=end_date,
