@@ -2,6 +2,33 @@
 
 All notable changes. Versions follow `stratabi/__init__.py`.
 
+## [1.7.3] — 2026-11-08
+
+Fixes from the 1.7.2 retest (Linux no-AWS, and Windows against live Athena).
+
+### Fixed
+- **N8 — parameterised tiles no longer 500 on first load.** A filtered tile ran before
+  the input store was populated and raised "Missing input for SQL param". The tile now
+  seeds input defaults from each `input_select`/`input_range` block's `value` on load,
+  and shows "Waiting for input…" instead of raising when a value isn't available yet.
+- **N1 — demo dashboard no longer throws a 500 from the status poller.** The poller hit
+  DynamoDB in local mode (`NoCredentialsError`); it now returns early when `MODE=local`.
+- **N7 — `import stratabi.core.runner` works without a region.** The Lambda client and
+  module-registry table are created lazily instead of at import time.
+- **N6 — the bundled LLM contract no longer leaks a foreign account or a placeholder
+  URL.** Examples use `<your-system-bucket>` (substituted with `STRATABI_SYSTEM_BUCKET`
+  at assembly time), and the schema link points at the real schema URL.
+
+### Changed
+- **N2** — in local/demo mode the startup log says `mode=local (demo)` instead of
+  printing `STRATABI_SYSTEM_BUCKET=None`.
+- **N3** — markdown-block tables (e.g. the demo "Key metrics" tile) get cell padding so
+  labels and values no longer collide.
+- **N4** — demo "days late" uses a skewed 1–30 spread so "most delayed orders" shows a
+  gradient instead of every row tying at 9.
+- **N9/N10** — `depends_on` marked reserved/not-enforced (schema + docs); the LLM
+  contract now tells the model to set `triggered_by` on input-bound tiles.
+
 ## [1.7.2] — 2026-11-07
 
 Fixes from a first-time new-user install test (pipx, Windows + Linux).

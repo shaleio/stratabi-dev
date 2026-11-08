@@ -70,3 +70,12 @@
   background-color: rgba(var(--bs-success-rgb, 47, 170, 134), 0.15) !important;
   color: var(--bs-success, #2faa86) !important;
 }
+
+/* Markdown block tables (e.g. the demo "Key metrics" tile): dcc.Markdown renders a
+   bare <table> the Bootswatch theme doesn't pad, so label and value collide
+   ("Open-order backlog" + "197" -> "backlog197"). Give cells real padding and keep the
+   label column on one line. */
+.stratabi-md table { width: 100%; border-collapse: collapse; margin: 0.25rem 0; }
+.stratabi-md th, .stratabi-md td { padding: 0.35rem 0.9rem; text-align: left; vertical-align: top; }
+.stratabi-md td:first-child, .stratabi-md th:first-child { white-space: nowrap; }
+.stratabi-md td:not(:first-child), .stratabi-md th:not(:first-child) { text-align: right; }

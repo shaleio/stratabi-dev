@@ -799,6 +799,23 @@ def sync_dashboard_refresh_store(n_clicks, user_id, dashboard_key):
         "dashboard_key": dashboard_key,
     }
 
+def _input_defaults_from_config(config: dict) -> dict:
+    """Default values declared by the dashboard's input_select / input_range blocks,
+    keyed by their input_id. Used to seed a tile's first run: on initial load the
+    dashboard-input-store is still empty (store_inputs hasn't fired), so without these
+    a parameterised tile would execute with no inputs and raise "Missing input for SQL
+    param". Mirrors the {input_id: value} shape store_inputs writes under "inputs"."""
+    defaults: dict = {}
+    for tile in (config or {}).get("layout", []):
+        block = tile.get("block") or {}
+        if block.get("type") in ("input_select", "input_range"):
+            cfg = block.get("config") or {}
+            input_id = cfg.get("input_id") or tile.get("id")
+            if input_id is not None and "value" in cfg:
+                defaults[input_id] = cfg.get("value")
+    return defaults
+
+
 @callback(
     Output({"type": "tile-content", "tile_id": MATCH}, "children"),
     Output({"type": "tile-status-store", "tile_id": MATCH}, "data"),
@@ -844,13 +861,33 @@ def update_tile(config, _refresh, _tick, trigger_data, run_data, inputs, active_
     
     dashboard_key = config.get("_dashboard_key") or active_dashboard
 
+    # Merge declared input defaults UNDER whatever the input store currently holds, so a
+    # parameterised tile has values on its first run even before store_inputs fires.
+    # Store values take precedence over config defaults.
+    effective_inputs = {"inputs": _input_defaults_from_config(config)}
+    if isinstance(inputs, dict):
+        store_inputs_data = inputs.get("inputs") if isinstance(inputs.get("inputs"), dict) else \
+            {k: v for k, v in inputs.items() if k != "_meta"}
+        effective_inputs["inputs"].update(store_inputs_data or {})
 
-    result = execute_tile(
-        tile,
-        inputs or {},
-        dashboard_key=dashboard_key,
-        runtime_session_id=runtime_session_id,
-    )
+    try:
+        result = execute_tile(
+            tile,
+            effective_inputs,
+            dashboard_key=dashboard_key,
+            runtime_session_id=runtime_session_id,
+        )
+    except ValueError as e:
+        # A param whose input value isn't available yet (the input store hasn't filled,
+        # or the user hasn't chosen). Show a muted placeholder and wait for the input to
+        # re-trigger this tile — never a 500. (A genuinely unmapped param still surfaces
+        # here as "Waiting for input…"; the input tile that fills it will clear it.)
+        if "Missing input for SQL param" in str(e):
+            return (
+                html.Div("Waiting for input…", className=status_text_class(tile, "muted")),
+                dash.no_update,
+            )
+        raise
 
     if isinstance(result, dict):
         status = str(result.get("status", "RUNNING")).upper()

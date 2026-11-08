@@ -160,7 +160,10 @@ def generate() -> dict[str, list[dict]]:
             shipped = order_date + dt.timedelta(days=rng.randint(1, 4))
             promised = order_date + dt.timedelta(days=5)
             is_late = rng.random() < late_rate
-            days_late = rng.randint(1, 9) if is_late else 0
+            # Skewed spread (mode ~2 days, long tail to ~30) instead of a hard 1–9 cap, so
+            # the "most delayed orders" table shows a descending gradient rather than every
+            # top row tying at the maximum.
+            days_late = int(rng.triangular(1, 2, 30)) if is_late else 0
             delivered = shipped + dt.timedelta(days=2 + days_late)
             event_seq += 1
             fulfillment.append({

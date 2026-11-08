@@ -7,22 +7,37 @@ from typing import Any
 import boto3
 
 
-lambda_client = boto3.client("lambda")
-dynamodb = boto3.resource("dynamodb")
-
 MODULE_REGISTRY_TABLE_NAME = os.getenv(
     "STRATABI_MODULE_REGISTRY_TABLE",
     "stratabi_module_registry",
 )
 
-MODULE_REGISTRY_TABLE = dynamodb.Table(MODULE_REGISTRY_TABLE_NAME)
+# AWS clients are created lazily, not at import time: a module-level
+# boto3.client("lambda") raises NoRegionError when imported without a region
+# configured, which breaks `import stratabi.core.runner` for tests and tooling.
+_lambda_client = None
+_module_registry_table = None
+
+
+def _get_lambda_client():
+    global _lambda_client
+    if _lambda_client is None:
+        _lambda_client = boto3.client("lambda")
+    return _lambda_client
+
+
+def _get_module_registry_table():
+    global _module_registry_table
+    if _module_registry_table is None:
+        _module_registry_table = boto3.resource("dynamodb").Table(MODULE_REGISTRY_TABLE_NAME)
+    return _module_registry_table
 
 
 def invoke_lambda_async(lambda_arn: str, payload: dict[str, Any]) -> dict[str, Any]:
     if not lambda_arn:
         raise ValueError("lambda_arn is required")
 
-    response = lambda_client.invoke(
+    response = _get_lambda_client().invoke(
         FunctionName=lambda_arn,
         InvocationType="Event",
         Payload=json.dumps(payload, default=str).encode("utf-8"),
@@ -66,7 +81,7 @@ def resolve_module_for_execution(module_id: str, lambda_index: int) -> dict[str,
     if lambda_index < 0:
         raise ValueError(f"lambda_index must be >= 0: {lambda_index}")
 
-    response = MODULE_REGISTRY_TABLE.get_item(
+    response = _get_module_registry_table().get_item(
         Key={"module_id": module_id}
     )
 

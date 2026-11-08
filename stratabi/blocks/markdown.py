@@ -23,4 +23,4 @@ class MarkdownBlock(Block):
         if not content:
             raise ValueError("Markdown block has no content.")
 
-        return dcc.Markdown(content)
+        return dcc.Markdown(content, className="stratabi-md")

@@ -35,10 +35,15 @@ if os.getenv("STRATABI_ACCESS_LOG", "").strip().lower() not in ("1", "true", "ye
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
 logger.info("Starting StrataBI")
-logger.info("STRATABI_SYSTEM_BUCKET=%s", os.getenv("STRATABI_SYSTEM_BUCKET"))
-logger.info("STRATABI_THEME_PREFIX=%s", os.getenv("STRATABI_THEME_PREFIX"))
-logger.info("STRATABI_DASHBOARD_PREFIX=%s", os.getenv("STRATABI_DASHBOARD_PREFIX"))
-logger.info("STRATABI_ATHENA_OUTPUT=%s", os.getenv("STRATABI_ATHENA_OUTPUT"))
+# In local/demo mode the STRATABI_* data-plane settings are intentionally unset; logging
+# them as "=None" reads like a misconfiguration. Only echo them when running against AWS.
+if os.getenv("STRATABI_MODE", "local") == "aws":
+    logger.info("STRATABI_SYSTEM_BUCKET=%s", os.getenv("STRATABI_SYSTEM_BUCKET"))
+    logger.info("STRATABI_THEME_PREFIX=%s", os.getenv("STRATABI_THEME_PREFIX"))
+    logger.info("STRATABI_DASHBOARD_PREFIX=%s", os.getenv("STRATABI_DASHBOARD_PREFIX"))
+    logger.info("STRATABI_ATHENA_OUTPUT=%s", os.getenv("STRATABI_ATHENA_OUTPUT"))
+else:
+    logger.info("mode=local (demo) - no AWS data plane")
 
 
 #dynamo declaration

@@ -63,6 +63,7 @@ Blocks:
 * input_range: block.config maps to a range/slider-style component.
 * markdown, image, raw_html: render static or artifact-backed content.
 * Input blocks write values to the dashboard input store; queries read from the store via query.params.
+* A tile whose query uses an input (via query.params) MUST list the input tile's id in its `triggered_by` so it re-runs when the input changes. Give each input block a sensible `config.value` default so the tile also runs correctly on first load.
 
 Data binding rules:
 
@@ -95,7 +96,7 @@ SELECT
 "sepal.length",
 "sepal.width",
 variety
-FROM !parquet('s3://stratabi-system-332696961529/runtime/test/iris/')
+FROM !parquet('s3://<your-system-bucket>/runtime/test/iris/')
 LIMIT 150
 
 StrataBI resolves this to normal Athena SQL similar to:
@@ -110,7 +111,7 @@ LIMIT 150
 The generated Glue table points to the original S3 location. The source parquet is not copied.
 
 Objective:
-Generate valid StrataBI dashboard JSON following the schema at <whatevermywebaddressis>.
+Generate valid StrataBI dashboard JSON following the schema at https://shaleio.com/schemas/dashboard.schema.json.
 
 Canonical patterns:
 
@@ -148,7 +149,7 @@ Cache parquet tile:
 },
 "exec": {
 "type": "cache",
-"cache_s3_uri": "s3://stratabi-system-332696961529/runtime/test/iris.parquet",
+"cache_s3_uri": "s3://<your-system-bucket>/runtime/test/iris.parquet",
 "result_kind": "dataframe",
 "result_format": "parquet",
 "result_name": "iris.parquet"
@@ -200,7 +201,7 @@ Async Athena tile using source macro:
 "result_name": "athena_iris.parquet"
 },
 "query": {
-"sql": "SELECT \"sepal.length\", \"sepal.width\", variety FROM !parquet('s3://stratabi-system-332696961529/runtime/test/iris/') LIMIT 150"
+"sql": "SELECT \"sepal.length\", \"sepal.width\", variety FROM !parquet('s3://<your-system-bucket>/runtime/test/iris/') LIMIT 150"
 },
 "block": {
 "type": "plotly",

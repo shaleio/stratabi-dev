@@ -24,12 +24,20 @@ def _docs_base_url() -> str:
 # Bundled resources (shipped in the wheel under stratabi/data/)
 # ---------------------------------------------------------------------------
 def load_core_contract() -> str:
-    """The core StrataBI LLM contract, read from the bundled data/docs copy."""
+    """The core StrataBI LLM contract, read from the bundled data/docs copy.
+
+    The bundled text uses the `<your-system-bucket>` placeholder (never a real account's
+    bucket). When STRATABI_SYSTEM_BUCKET is configured, substitute it so examples point at
+    the user's own bucket instead of a placeholder the model might copy verbatim."""
     try:
-        return files("stratabi.data.docs").joinpath("llm_contract.txt").read_text(encoding="utf-8")
+        text = files("stratabi.data.docs").joinpath("llm_contract.txt").read_text(encoding="utf-8")
     except Exception as exc:  # pragma: no cover - defensive
         logger.warning("core llm_contract.txt load failed: %s", exc)
         return "(core llm_contract.txt unavailable)"
+    bucket = os.getenv("STRATABI_SYSTEM_BUCKET")
+    if bucket:
+        text = text.replace("<your-system-bucket>", bucket)
+    return text
 
 
 def load_local_schema_text() -> str:

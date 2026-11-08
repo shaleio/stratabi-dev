@@ -1018,7 +1018,7 @@
         },
         "depends_on": {
           "$ref": "#/$defs/tile_dependency_list",
-          "description": "Tile ids that must be evaluated before this tile. Applies to all tile types, including input tiles."
+          "description": "RESERVED — not yet enforced by the runtime. Intended: tile ids that must be evaluated before this tile. For now, input defaults are seeded on load so parameterised tiles do not fail; use `triggered_by` to re-run a tile when an input changes."
         },
         "triggered_by": {
           "$ref": "#/$defs/tile_dependency_list",

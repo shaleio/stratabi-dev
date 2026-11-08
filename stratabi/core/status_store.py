@@ -7,6 +7,8 @@ from typing import Any
 import boto3
 from boto3.dynamodb.conditions import Key
 
+from stratabi.core.config import config
+
 
 dynamodb = boto3.resource("dynamodb")
 
@@ -108,6 +110,13 @@ def get_dashboard_statuses(
     dashboard_config: dict[str, Any],
     runtime_session_id: str | None,
 ) -> dict[str, dict[str, Any]]:
+    # Local/demo mode has no async status plane (no DynamoDB, often no AWS creds at all):
+    # tiles render synchronously from on-disk data. Skip the status query entirely so
+    # opening a demo dashboard doesn't raise NoCredentialsError. No statuses == nothing
+    # pending; the sync tiles already carry their own results.
+    if config.MODE != "aws":
+        return {}
+
     dashboard_key = _dashboard_key_from_config(dashboard_config)
 
     statuses: dict[str, dict[str, Any]] = {}
