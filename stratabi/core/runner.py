@@ -19,10 +19,20 @@ from stratabi.core.s3_loader import load_result_from_status, load_result_from_s3
 from stratabi.core.source_macros import SourceMacroResolver
 
 
-dynamodb = boto3.resource("dynamodb")
-
 STATUS_TABLE_NAME = os.getenv("STRATABI_TILE_STATUS_TABLE", "stratabi_tile_status")
-STATUS_TABLE = dynamodb.Table(STATUS_TABLE_NAME)
+
+# Created lazily (not at import) with an explicit region so `import stratabi.core.runner`
+# never raises NoRegionError, and a .env with only AWS_REGION resolves. See N7/N12.
+_status_table = None
+
+
+def _get_status_table():
+    global _status_table
+    if _status_table is None:
+        from stratabi.core.config import aws_region
+        _status_table = boto3.resource("dynamodb", region_name=aws_region()).Table(STATUS_TABLE_NAME)
+    return _status_table
+
 DEPLOYMENT_ID = os.getenv("STRATABI_DEPLOYMENT_ID", "default")
 RESULT_PREFIX = os.getenv("STRATABI_RESULT_PREFIX", "runtime/results").strip("/")
 BUCKET = os.getenv("STRATABI_SYSTEM_BUCKET", "")
@@ -231,7 +241,7 @@ def _make_run_id(
     return hashlib.sha256(raw).hexdigest()
 
 def _get_tile_status(runtime_tile_key: str, run_id: str) -> dict | None:
-    return STATUS_TABLE.get_item(
+    return _get_status_table().get_item(
         Key={
             "runtime_tile_key": runtime_tile_key,
             "run_id": run_id,
@@ -316,7 +326,7 @@ def _put_running_status(
     item["traceback"] = ""
 
     try:
-        STATUS_TABLE.put_item(
+        _get_status_table().put_item(
             Item=item,
             ConditionExpression=(
                 "attribute_not_exists(runtime_tile_key) "
@@ -510,7 +520,7 @@ def execute_tile(
                 failed["updated_at"] = _now_iso()
                 failed["message"] = f"Failed to invoke async {exec_type}: {e}"
                 failed["traceback"] = ""
-                STATUS_TABLE.put_item(Item=failed)
+                _get_status_table().put_item(Item=failed)
                 return {
                     "status": "FAILED",
                     "message": failed["message"],
@@ -598,7 +608,7 @@ def execute_tile(
                 failed["updated_at"] = _now_iso()
                 failed["message"] = f"Failed to invoke async {exec_type}: {e}"
                 failed["traceback"] = ""
-                STATUS_TABLE.put_item(Item=failed)
+                _get_status_table().put_item(Item=failed)
                 return {
                     "status": "FAILED",
                     "message": failed["message"],

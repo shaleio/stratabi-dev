@@ -171,16 +171,26 @@ def _load_env() -> str | None:
     user's project folder. We force the search to start at the cwd so the documented
     "write .env, then run stratabi here" flow actually works when installed.
     """
+    path = None
     try:
         from dotenv import load_dotenv, find_dotenv
     except Exception as exc:  # python-dotenv not installed
         print(f"note: python-dotenv unavailable, not loading .env ({exc})", file=sys.stderr)
-        return None
-    path = find_dotenv(usecwd=True)
-    if path:
-        load_dotenv(path)
-        return path
-    return None
+    else:
+        path = find_dotenv(usecwd=True)
+        if path:
+            load_dotenv(path)
+    _normalize_region()
+    return path
+
+
+def _normalize_region() -> None:
+    """Mirror AWS_REGION -> AWS_DEFAULT_REGION when only the former is set. botocore
+    versions differ on which they read for implicit region resolution, so a .env (or
+    shell) that sets only AWS_REGION could pass `--check` yet leave boto3 clients created
+    at import with no region. Runs before the app is imported. See N12."""
+    if os.getenv("AWS_REGION") and not os.getenv("AWS_DEFAULT_REGION"):
+        os.environ["AWS_DEFAULT_REGION"] = os.environ["AWS_REGION"]
 
 
 _DOCS_URL = "https://shaleio.com/docs/developer-edition"

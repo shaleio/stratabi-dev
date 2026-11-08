@@ -26,6 +26,11 @@ from dotenv import load_dotenv, find_dotenv
 # so it would never see the user's project .env. See STRATABI_FIXES #1.
 load_dotenv(find_dotenv(usecwd=True))
 
+# Mirror AWS_REGION -> AWS_DEFAULT_REGION when only the former is set, so every boto3
+# client resolves a region regardless of which variable the user set. See N12.
+if os.getenv("AWS_REGION") and not os.getenv("AWS_DEFAULT_REGION"):
+    os.environ["AWS_DEFAULT_REGION"] = os.environ["AWS_REGION"]
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -46,8 +51,16 @@ else:
     logger.info("mode=local (demo) - no AWS data plane")
 
 
-#dynamo declaration
-dynamodb = boto3.resource("dynamodb")
+#dynamo declaration — lazy so importing the app (and `stratabi --check`) never raises
+# NoRegionError before the run path, and a .env with only AWS_REGION resolves. See N7/N12.
+_dynamodb = None
+
+def _get_dynamodb():
+    global _dynamodb
+    if _dynamodb is None:
+        from stratabi.core.config import aws_region
+        _dynamodb = boto3.resource("dynamodb", region_name=aws_region())
+    return _dynamodb
 
 #define server
 server = flask.Flask(__name__)
@@ -63,7 +76,7 @@ def get_module_registry_table():
     if not table_name:
         return None
 
-    return dynamodb.Table(table_name)
+    return _get_dynamodb().Table(table_name)
 
 
 def scan_app_modules() -> list[dict]:

@@ -7,10 +7,8 @@ from typing import Any
 import boto3
 from boto3.dynamodb.conditions import Key
 
-from stratabi.core.config import config
+from stratabi.core.config import config, aws_region
 
-
-dynamodb = boto3.resource("dynamodb")
 
 STATUS_TABLE_NAME = os.getenv("STRATABI_TILE_STATUS_TABLE", "stratabi_tile_status")
 
@@ -21,7 +19,16 @@ STATUS_RUNTIME_INDEX_NAME = os.getenv(
 
 DEPLOYMENT_ID = os.getenv("STRATABI_DEPLOYMENT_ID", "default")
 
-STATUS_TABLE = dynamodb.Table(STATUS_TABLE_NAME)
+# Created lazily (not at import) with an explicit region so importing this module never
+# raises NoRegionError, and so a .env with only AWS_REGION resolves. See N7/N12.
+_status_table = None
+
+
+def _get_status_table():
+    global _status_table
+    if _status_table is None:
+        _status_table = boto3.resource("dynamodb", region_name=aws_region()).Table(STATUS_TABLE_NAME)
+    return _status_table
 
 
 def _normalize_runtime_session_id(runtime_session_id: str | None) -> str:
@@ -91,7 +98,7 @@ def _latest_status_for_tile(
         tile_id=tile_id,
     )
 
-    response = STATUS_TABLE.query(
+    response = _get_status_table().query(
         IndexName=STATUS_RUNTIME_INDEX_NAME,
         KeyConditionExpression=Key("runtime_tile_key").eq(runtime_tile_key),
         ScanIndexForward=False,

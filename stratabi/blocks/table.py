@@ -54,8 +54,13 @@ class TableBlock(Block):
             **self.config.get("default_col_def", {}),
         }
 
+        # dag.AgGrid requires a string/dict id — id=None (grid_id omitted) raises
+        # "id prop must be a string or dict". Default to a stable id derived from the
+        # tile so a table block works with no config.
+        grid_id = self.config.get("grid_id") or f"grid-{self.tile_id or id(self)}"
+
         return dag.AgGrid(
-            id=self.config.get("grid_id"),
+            id=grid_id,
             rowData=df.to_dict("records"),
             columnDefs=column_defs,
             defaultColDef=default_col_def,

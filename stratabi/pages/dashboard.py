@@ -86,7 +86,9 @@ def artifact_download_enabled(tile: dict) -> bool:
 
 
 def presign_artifact_url(status_or_context: dict, filename: str | None = None, expires_in: int = 3600) -> str | None:
-    bucket = status_or_context.get("system_bucket")
+    # The normalized status row carries result_s3_key but not system_bucket, so fall back
+    # to the configured system bucket.
+    bucket = status_or_context.get("system_bucket") or os.getenv("STRATABI_SYSTEM_BUCKET")
     key = status_or_context.get("result_s3_key")
 
     if not bucket or not key:
@@ -112,6 +114,18 @@ def get_tile_artifact_presigned_url(tile, dashboard_key, runtime_session_id):
         location = exec_cfg.get("cache_s3_uri")
         filename = artifact_cfg.get("filename")
         return presign_s3_location(location, filename=filename)
+
+    # Non-cache (async Athena / Lambda): the artifact is written by the tile's async run
+    # and recorded in the status store. Presign the latest SUCCEEDED result object.
+    from stratabi.core import status_store
+    status = status_store._latest_status_for_tile(
+        dashboard_key=dashboard_key,
+        runtime_session_id=runtime_session_id,
+        tile_id=tile.get("id"),
+    )
+    if status and str(status.get("status", "")).upper() == "SUCCEEDED":
+        return presign_artifact_url(status, filename=artifact_cfg.get("filename"))
+    return None
 
 
 def get_tile_by_id(config, tile_id):
@@ -390,7 +404,13 @@ def render_tile_card(tile, polling_enabled=False):
             )
         )
 
-    if artifact_cfg.get("download", _buttons_default):
+    # Download defaults ON only where an S3 artifact actually exists: cache tiles and
+    # async runs (async Athena + Lambda). A plain sync tile returns an inline dataframe
+    # with no downloadable object, so don't show a button that can't work. Explicit
+    # artifact.download overrides.
+    _exec_type = (tile.get("exec") or {}).get("type")
+    _artifact_default = _exec_type in ("cache", "lambda") or bool((tile.get("exec") or {}).get("async"))
+    if artifact_cfg.get("download", _artifact_default):
         control_buttons.append(
             dbc.Button(
                 artifact_cfg.get("label", "⤓"),
@@ -816,6 +836,19 @@ def _input_defaults_from_config(config: dict) -> dict:
     return defaults
 
 
+def _tile_exec_error(tile: dict, exc: Exception):
+    """Render a tile execution failure (returns (content, status)) instead of letting the
+    exception escape the callback as an HTTP 500 with a blank tile."""
+    name = type(exc).__name__
+    msg = str(exc) or name
+    blob = f"{name} {msg}".lower()
+    if "nocredential" in blob or "expiredtoken" in blob or ("expired" in blob and "token" in blob):
+        friendly = "AWS credentials not found or expired. Run `aws sso login` (or refresh your credentials)."
+    else:
+        friendly = f"Tile execution failed: {msg}"
+    return html.Div(friendly, className=status_text_class(tile, "danger")), "FAILED"
+
+
 @callback(
     Output({"type": "tile-content", "tile_id": MATCH}, "children"),
     Output({"type": "tile-status-store", "tile_id": MATCH}, "data"),
@@ -887,7 +920,11 @@ def update_tile(config, _refresh, _tick, trigger_data, run_data, inputs, active_
                 html.Div("Waiting for input…", className=status_text_class(tile, "muted")),
                 dash.no_update,
             )
-        raise
+        return _tile_exec_error(tile, e)
+    except Exception as e:  # noqa: BLE001 — never let a tile's execution 500 the page
+        # e.g. NoCredentialsError / ExpiredToken on a lapsed SSO session, or any Athena/
+        # Lambda/S3 error. Render it in the tile as a failure instead of a blank 500.
+        return _tile_exec_error(tile, e)
 
     if isinstance(result, dict):
         status = str(result.get("status", "RUNNING")).upper()
@@ -1034,9 +1071,23 @@ def configure_interval(config):
         return dash.no_update, True
 
     settings = config.get("settings", {})
+    # Async tiles (async Athena / Lambda) only pick up completion on interval ticks. If a
+    # dashboard has any async tile, auto-enable polling even when settings.interval_enabled
+    # is false — otherwise the tile is stuck on "Processing…" forever. This is safe:
+    # interval ticks never start new work for load_once/input tiles (only interval/always
+    # tiles run on a tick, which is their intended behavior).
+    has_async = any(
+        (tile.get("exec") or {}).get("async") or (tile.get("exec") or {}).get("type") == "lambda"
+        for tile in config.get("layout", [])
+    )
+    explicitly_enabled = settings.get("interval_enabled", False)
+    enabled = explicitly_enabled or has_async
+    # Poll quickly when auto-enabled for async so a finished query appears promptly;
+    # honor an explicit interval_ms, else 5s for async-auto, else the 60s default.
+    default_ms = 5_000 if (has_async and not explicitly_enabled) else 60_000
     return (
-        settings.get("interval_ms", 60_000),
-        not settings.get("interval_enabled", False),
+        settings.get("interval_ms", default_ms),
+        not enabled,
     )
 
 # -----------------------------------------------
@@ -1178,6 +1229,19 @@ def update_module_page(pathname, active_tab, active_page, prev_clicks, next_clic
         return pages[min(len(pages) - 1, current_index + 1)].get("page_id")
 
     return current_page_id or pages[0].get("page_id")
+
+
+@callback(
+    Output("artifact-download-modal", "is_open", allow_duplicate=True),
+    Input("artifact-download-close", "n_clicks"),
+    prevent_initial_call=True,
+)
+def close_artifact_download_modal(_n):
+    # The Close button had no callback, so the modal couldn't be dismissed. Mirror the
+    # status modal's close behavior.
+    if not _n:
+        raise PreventUpdate
+    return False
 
 
 @callback(

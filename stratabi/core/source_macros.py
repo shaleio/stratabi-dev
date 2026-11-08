@@ -16,8 +16,20 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pyarrow.fs as pafs
 
-glue = boto3.client("glue")
 s3 = boto3.client("s3")
+
+# glue client is created lazily (not at import) with an explicit region so importing
+# this module — and anything that imports it, e.g. stratabi.core.runner — never raises
+# NoRegionError, and a .env with only AWS_REGION resolves. See N7/N12.
+_glue = None
+
+
+def _get_glue():
+    global _glue
+    if _glue is None:
+        from stratabi.core.config import aws_region
+        _glue = boto3.client("glue", region_name=aws_region())
+    return _glue
 
 
 SOURCE_MACRO_PATTERN = re.compile(
@@ -182,7 +194,7 @@ class SourceMacroResolver:
         """
 
         try:
-            response = glue.get_table(
+            response = _get_glue().get_table(
                 DatabaseName=source.database,
                 Name=source.table_name,
             )
@@ -192,7 +204,7 @@ class SourceMacroResolver:
             source.columns = existing_table.get("StorageDescriptor", {}).get("Columns", [])
             return source
 
-        except glue.exceptions.EntityNotFoundException:
+        except _get_glue().exceptions.EntityNotFoundException:
             pass
 
         columns = infer_source_columns(
@@ -205,7 +217,7 @@ class SourceMacroResolver:
             columns=columns,
         )
 
-        glue.create_table(
+        _get_glue().create_table(
             DatabaseName=source.database,
             TableInput=table_input,
         )

@@ -24,7 +24,19 @@ from stratabi.core.config import config
 logger = logging.getLogger(__name__)
 
 s3 = boto3.client("s3")
-dynamodb = boto3.resource("dynamodb")
+
+# dynamodb resource is created lazily (not at import) with an explicit region so
+# importing this module — and anything that imports it, e.g. stratabi.core.runner —
+# never raises NoRegionError, and a .env with only AWS_REGION resolves. See N7/N12.
+_dynamodb = None
+
+
+def _get_dynamodb():
+    global _dynamodb
+    if _dynamodb is None:
+        from stratabi.core.config import aws_region
+        _dynamodb = boto3.resource("dynamodb", region_name=aws_region())
+    return _dynamodb
 
 
 # ---------------------------------------------------------------------
@@ -62,7 +74,7 @@ def _get_table(env_var_name: str):
     table_name = os.getenv(env_var_name)
     if not table_name:
         return None
-    return dynamodb.Table(table_name)
+    return _get_dynamodb().Table(table_name)
 
 def parse_s3_location(location: str, default_bucket: str | None = None) -> tuple[str, str]:
     """

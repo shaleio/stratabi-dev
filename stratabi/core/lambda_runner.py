@@ -22,14 +22,18 @@ _module_registry_table = None
 def _get_lambda_client():
     global _lambda_client
     if _lambda_client is None:
-        _lambda_client = boto3.client("lambda")
+        from stratabi.core.config import aws_region
+        _lambda_client = boto3.client("lambda", region_name=aws_region())
     return _lambda_client
 
 
 def _get_module_registry_table():
     global _module_registry_table
     if _module_registry_table is None:
-        _module_registry_table = boto3.resource("dynamodb").Table(MODULE_REGISTRY_TABLE_NAME)
+        from stratabi.core.config import aws_region
+        _module_registry_table = boto3.resource(
+            "dynamodb", region_name=aws_region()
+        ).Table(MODULE_REGISTRY_TABLE_NAME)
     return _module_registry_table
 
 

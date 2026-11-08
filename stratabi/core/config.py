@@ -4,6 +4,17 @@ def _get_env(name, default=None):
     val = os.getenv(name, default)
     return val if val not in ("None", "") else default
 
+
+def aws_region():
+    """Resolve the AWS region from AWS_REGION or AWS_DEFAULT_REGION.
+
+    botocore versions differ on which of the two they read for implicit region
+    resolution, so a `.env` that sets only AWS_REGION (as the docs suggested) could pass
+    `--check` yet leave a client with no region. Resolving both here and passing it
+    explicitly to every client/resource makes either variable work. Returns None when
+    neither is set (falls back to boto3's normal profile/config resolution)."""
+    return os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION") or None
+
 class Config:
     MODE = _get_env("STRATABI_MODE", "local")
 

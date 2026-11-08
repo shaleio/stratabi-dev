@@ -26,7 +26,7 @@ from pathlib import Path
 FORGEWORKS_DEMO_SEED = 20260702
 
 DEMO_ID = "forgeworks"
-DEMO_VERSION = "1"
+DEMO_VERSION = "2"
 DEMO_TITLE = "ForgeWorks Distribution"
 
 # Namespaced dashboard ids (never collide with user dashboards).

@@ -2,6 +2,34 @@
 
 All notable changes. Versions follow `stratabi/__init__.py`.
 
+## [1.7.4] — 2026-11-08
+
+Fixes from the 1.7.3 retest (N11–N18), completing the partials from 1.7.3.
+
+### Fixed
+- **N7/N12 — the app now starts with only `AWS_REGION` set, and `import stratabi.core.runner`
+  works without a region.** All import-time boto3 clients/resources (runner, status_store,
+  lambda_runner, s3_loader, source_macros, app) are now created lazily with an explicit
+  region, and the CLI normalizes `AWS_REGION → AWS_DEFAULT_REGION` before importing the app.
+- **N11 — a failing tile shows the error instead of a blank 500.** `update_tile` catches
+  execution exceptions and renders them (friendly text for missing/expired credentials),
+  recording FAILED.
+- **N15 — `table` blocks render with no config.** The AG Grid id defaults to a stable
+  per-tile id instead of `None` (which Dash rejected); `grid_id` is now allowed by the schema.
+- **N17 — the download button works for async Athena/Lambda tiles**, presigning the
+  latest SUCCEEDED result; it now shows by default only where an artifact exists (cache
+  and async tiles).
+- **N18 — the download modal's Close button now closes it.**
+- **N14 — async tiles no longer stick on "Processing…".** Dashboards with any async tile
+  auto-enable status polling (5s) regardless of `interval_enabled`.
+- **N4 — the demo "most delayed orders" gradient now actually appears** (bumped the demo
+  cache version so the regenerated data ships).
+
+### Changed
+- **N16 — the Builder's Save now runs the same schema validation as the CLI** and warns
+  (with the first error) when a dashboard won't pass `dashboards push`.
+- Docs/schema: `depends_on` marked reserved; `interval_enabled` notes async auto-polling.
+
 ## [1.7.3] — 2026-11-08
 
 Fixes from the 1.7.2 retest (Linux no-AWS, and Windows against live Athena).

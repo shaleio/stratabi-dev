@@ -1030,6 +1030,12 @@ def save_dashboard_to_s3(action_data, file_label, switches, tags, user, current_
             label=normalized_label,
         )
 
+        # Schema validation (same jsonschema the CLI `dashboards push` enforces). The UI
+        # previously checked only the file label and tags, so a dashboard that saves here
+        # could be rejected by the CLI. Surface the first error as a warning — still save,
+        # so the author can iterate, but they know it won't pass validation as-is.
+        schema_ok, schema_err = ai_helpers.validate_dashboard(parsed_raw)
+
         key = save_dashboard_json(
             dashboard_id,
             parsed,
@@ -1038,11 +1044,22 @@ def save_dashboard_to_s3(action_data, file_label, switches, tags, user, current_
             existing_key=current_key,
         )
 
-
+        saved_to = f"s3://{os.getenv('STRATABI_SYSTEM_BUCKET')}/{key}"
+        if schema_ok:
+            return (
+                dbc.Alert(f"Dashboard saved to {saved_to}", color="success", dismissable=True),
+                key,
+            )
         return (
             dbc.Alert(
-                f"Dashboard saved to s3://{os.getenv('STRATABI_SYSTEM_BUCKET')}/{key}",
-                color="success",
+                [
+                    html.Div(f"Saved to {saved_to}, but it does not pass schema validation:",
+                             className="fw-bold"),
+                    html.Div(schema_err or "unknown schema error", className="small"),
+                    html.Div("`stratabi dashboards push` will reject it until this is fixed.",
+                             className="small text-muted"),
+                ],
+                color="warning",
                 dismissable=True,
             ),
             key,

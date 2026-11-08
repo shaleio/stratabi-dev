@@ -50,7 +50,7 @@
         "interval_enabled": {
           "type": "boolean",
           "default": false,
-          "description": "If true, dashboard tiles may refresh on an interval."
+          "description": "If true, dashboard tiles may refresh on an interval. Note: dashboards with any async tile poll automatically for completion regardless of this flag, so you only need it for `interval`/`always` tiles that should re-run on a timer."
         },
         "interval_ms": {
           "type": "integer",
@@ -614,6 +614,10 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
+            "grid_id": {
+              "type": "string",
+              "description": "Optional explicit AG Grid component id. If omitted, a stable id is derived from the tile."
+            },
             "height": {
               "$ref": "#/$defs/string_or_source",
               "default": "500px",
