@@ -7,6 +7,7 @@ from stratabi.blocks.image import ImageBlock
 from stratabi.blocks.raw_html import RawHTMLBlock
 from stratabi.blocks.input_range import InputRangeBlock
 from stratabi.blocks.input_select import InputSelectBlock
+from stratabi.blocks.input_text import InputTextBlock
 from stratabi.blocks.table import TableBlock
 
 BLOCK_REGISTRY = {
@@ -17,5 +18,6 @@ BLOCK_REGISTRY = {
     "raw_html": RawHTMLBlock,
     "input_range": InputRangeBlock,
     "input_select": InputSelectBlock,
+    "input_text": InputTextBlock,
     "table": TableBlock
 }

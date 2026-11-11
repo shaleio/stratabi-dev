@@ -72,6 +72,11 @@ class Config:
         "result_format": "json",
         "result_name": "result.json",
     },
+    "input_text": {
+        "result_kind": "json",
+        "result_format": "json",
+        "result_name": "result.json",
+    },
     "button": {
         "result_kind": "json",
         "result_format": "json",

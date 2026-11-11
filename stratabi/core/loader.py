@@ -58,6 +58,22 @@ def load_all_dashboards():
     return load_dashboards_s3() if config.MODE == "aws" else load_dashboards_local()
 
 
+def load_dashboard_by_s3_key(key: str):
+    """Read one dashboard JSON from an EXPLICIT system-bucket key (not the dashboards prefix).
+
+    Used by the module-page `dashboard_source` seam so a module can render a per-session, generated
+    dashboard. Caller is responsible for building an owner-isolated key. Returns the dict, or None if
+    missing/unreadable (callers degrade to an empty state rather than erroring)."""
+    if config.MODE != "aws":
+        return None
+    import boto3
+    try:
+        body = boto3.client("s3").get_object(Bucket=config.BUCKET, Key=key)["Body"].read()
+        return json.loads(body)
+    except Exception:
+        return None
+
+
 def load_dashboard_json(name=None):
     dashboards = load_all_dashboards()
     if not dashboards:

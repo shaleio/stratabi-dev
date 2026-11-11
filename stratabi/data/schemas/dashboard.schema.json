@@ -814,7 +814,8 @@
               "description": "Options may be inline, ?source-resolved, or replaced by runtime JSON results."
             },
             "value": {
-              "oneOf": [
+              "description": "Selected value. Runtime JSON results may override this.",
+              "anyOf": [
                 {
                   "type": "string"
                 },
@@ -836,11 +837,11 @@
                 {
                   "$ref": "#/$defs/source_value"
                 }
-              ],
-              "description": "Selected value. Runtime JSON results may override this."
+              ]
             },
             "default": {
-              "oneOf": [
+              "description": "Alias/fallback for value. Runtime JSON results may also return default.",
+              "anyOf": [
                 {
                   "type": "string"
                 },
@@ -862,8 +863,7 @@
                 {
                   "$ref": "#/$defs/source_value"
                 }
-              ],
-              "description": "Alias/fallback for value. Runtime JSON results may also return default."
+              ]
             },
             "multi": {
               "type": "boolean",
@@ -920,7 +920,7 @@
               "$ref": "#/$defs/number_or_source"
             },
             "default": {
-              "oneOf": [
+              "anyOf": [
                 {
                   "type": "number"
                 },
@@ -944,7 +944,8 @@
               ]
             },
             "value": {
-              "oneOf": [
+              "description": "Current or initial selected range value. May be a single number for slider behavior, a two-number array for range-slider behavior, null, or a ?source-resolved value.",
+              "anyOf": [
                 {
                   "type": "number"
                 },
@@ -965,8 +966,7 @@
                 {
                   "$ref": "#/$defs/source_value"
                 }
-              ],
-              "description": "Current or initial selected range value. May be a single number for slider behavior, a two-number array for range-slider behavior, null, or a ?source-resolved value."
+              ]
             }
           }
         }
@@ -997,6 +997,9 @@
         },
         {
           "$ref": "#/$defs/block_input_range"
+        },
+        {
+          "$ref": "#/$defs/block_input_text"
         }
       ]
     },
@@ -1104,6 +1107,93 @@
           "$ref": "#/$defs/source_value"
         }
       ]
+    },
+    "block_input_text": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "config"
+      ],
+      "properties": {
+        "type": {
+          "const": "input_text"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "input_id"
+          ],
+          "properties": {
+            "input_id": {
+              "$ref": "#/$defs/identifier",
+              "description": "Key stored in dashboard-input-store."
+            },
+            "label": {
+              "$ref": "#/$defs/string_or_source",
+              "description": "Input label or ?source value resolving to a string."
+            },
+            "placeholder": {
+              "type": "string"
+            },
+            "multiline": {
+              "type": "boolean",
+              "default": true,
+              "description": "Render a multi-line textarea (true) or a single-line input (false)."
+            },
+            "rows": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 40,
+              "default": 4,
+              "description": "Visible rows when multiline."
+            },
+            "maxlength": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Optional maximum character length."
+            },
+            "debounce": {
+              "type": "boolean",
+              "default": true,
+              "description": "Single-line input: update the store on blur/enter rather than each keystroke."
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/$defs/source_value"
+                }
+              ],
+              "description": "Current/initial text. Runtime JSON results (a string or {\"value\": ...}) may override this."
+            },
+            "default": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/$defs/source_value"
+                }
+              ],
+              "description": "Alias/fallback for value."
+            }
+          }
+        }
+      }
     }
-  }
+  },
+  "x-schema-version": "1.1.0",
+  "x-schema-changelog": [
+    "1.1.0: add input_text block (free-text / textarea); fix input_range & input_select default/value oneOf->anyOf numeric ambiguity."
+  ]
 }

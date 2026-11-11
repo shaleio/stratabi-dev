@@ -1,3 +1,4 @@
+import re
 import dash
 from dash import html, dcc, register_page, Input, Output, State, MATCH, ALL, ctx, callback
 from dash.exceptions import PreventUpdate
@@ -164,6 +165,41 @@ def build_page_config(module: dict, page: dict) -> dict:
         "layout": page.get("layout", []),
         "settings": module.get("settings", {}),
     }
+
+
+def _safe_session_segment(value) -> str:
+    return re.sub(r"[^A-Za-z0-9_-]", "", str(value or ""))[:96]
+
+
+def apply_dashboard_source(cfg: dict, page: dict, runtime_session_id, inputs) -> dict:
+    """SESSION DASHBOARD LOADING (general module-page seam).
+
+    If a multi_page_app page declares `dashboard_source`, render the caller's own session-scoped
+    dashboard instead of the page's static layout. Owner isolation is enforced by core: the
+    {runtime_session_id} placeholder is filled from the core-managed runtime session store (never
+    client input), so a client-supplied {session_id} (sanitized) can only address keys UNDER the
+    caller's own runtime-session prefix. The template MUST contain {runtime_session_id} or the seam
+    is ignored. Missing/denied/corrupt -> the page's static layout (empty state).
+    """
+    src = (page or {}).get("dashboard_source")
+    if not isinstance(src, dict):
+        return cfg
+    tmpl = src.get("s3_key") or ""
+    if "{runtime_session_id}" not in tmpl:
+        return cfg
+    store = (inputs or {}).get("inputs", inputs) if isinstance(inputs, dict) else {}
+    sid = _safe_session_segment(store.get(src.get("session_input", "session_id")))
+    rsid = _safe_session_segment(runtime_session_id or "shared")
+    key = tmpl.replace("{runtime_session_id}", rsid).replace("{session_id}", sid)
+    try:
+        from stratabi.core.loader import load_dashboard_by_s3_key
+        doc = load_dashboard_by_s3_key(key)
+    except Exception:
+        doc = None
+    if isinstance(doc, dict) and isinstance(doc.get("layout"), list) and doc["layout"]:
+        return {**cfg, "layout": doc["layout"], "name": doc.get("name", cfg.get("name")),
+                "settings": doc.get("settings", cfg.get("settings", {}))}
+    return cfg
 
 
 def resolve_sources_in_config(value):
@@ -385,7 +421,7 @@ def render_tile_card(tile, polling_enabled=False):
     # and input tiles get no buttons unless explicitly enabled. Explicit
     # controls.run_button / artifact.download always override this default.
     _block_type = (tile.get("block") or {}).get("type")
-    _is_control_block = _block_type in {"input_select", "input_range", "dropdown"}
+    _is_control_block = _block_type in {"input_select", "input_range", "input_text", "dropdown"}
     _buttons_default = bool(tile.get("exec")) and not _is_control_block
 
     control_buttons = []
@@ -725,9 +761,12 @@ def sync_dashboard_selector_store(dashboard_key):
     Input("dashboard-selector-store", "data"),
     Input("module-active-page-store", "data"),
     State("current-user-id-store", "data"),
+    State("dashboard-input-store", "data"),
+    State("dashboard-runtime-session-store", "data"),
 )
-def load_dashboard_config(pathname, dashboard_key, active_page_id, user_id):
+def load_dashboard_config(pathname, dashboard_key, active_page_id, user_id, inputs, runtime_session):
     module_id = parse_app_module_id(pathname)
+    runtime_session_id = (runtime_session or {}).get("runtime_session_id") if isinstance(runtime_session, dict) else None
 
     if module_id:
         try:
@@ -760,7 +799,8 @@ def load_dashboard_config(pathname, dashboard_key, active_page_id, user_id):
         page = next((p for p in pages if p.get("page_id") == active_page_id), pages[0])
         controls = render_module_controls(module, active_page_id)
 
-        return resolve_sources_in_config(build_page_config(module, page)), controls
+        cfg = apply_dashboard_source(build_page_config(module, page), page, runtime_session_id, inputs)
+        return resolve_sources_in_config(cfg), controls
 
     if not dashboard_key:
         raise PreventUpdate
@@ -828,11 +868,11 @@ def _input_defaults_from_config(config: dict) -> dict:
     defaults: dict = {}
     for tile in (config or {}).get("layout", []):
         block = tile.get("block") or {}
-        if block.get("type") in ("input_select", "input_range"):
+        if block.get("type") in ("input_select", "input_range", "input_text"):
             cfg = block.get("config") or {}
             input_id = cfg.get("input_id") or tile.get("id")
-            if input_id is not None and "value" in cfg:
-                defaults[input_id] = cfg.get("value")
+            if input_id is not None and ("value" in cfg or "default" in cfg):
+                defaults[input_id] = cfg.get("value", cfg.get("default"))
     return defaults
 
 

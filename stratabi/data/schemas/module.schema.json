@@ -203,10 +203,20 @@
       "allOf": [
         {
           "if": {
-            "properties": { "interval_enabled": { "const": true } },
-            "required": ["interval_enabled"]
+            "properties": {
+              "interval_enabled": {
+                "const": true
+              }
+            },
+            "required": [
+              "interval_enabled"
+            ]
           },
-          "then": { "required": ["interval_ms"] }
+          "then": {
+            "required": [
+              "interval_ms"
+            ]
+          }
         }
       ]
     },
@@ -237,6 +247,25 @@
             "items": {
               "type": "object",
               "additionalProperties": true
+            }
+          },
+          "dashboard_source": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "s3_key"
+            ],
+            "description": "Optional SESSION DASHBOARD LOADING seam: render a per-session, owner-isolated dashboard JSON in place of this page's static layout. The page's own `layout` is the empty-state fallback.",
+            "properties": {
+              "s3_key": {
+                "type": "string",
+                "description": "System-bucket key template for the session dashboard JSON. MUST contain {runtime_session_id} (core-injected, enforces owner isolation); may contain {session_id} (from the input store, sanitized). Example: modulename/sessions/{runtime_session_id}/{session_id}/current.json"
+              },
+              "session_input": {
+                "type": "string",
+                "default": "session_id",
+                "description": "Input-store key whose value fills {session_id}."
+              }
             }
           }
         }
@@ -288,7 +317,7 @@
         }
       }
     },
-      {
+    {
       "if": {
         "properties": {
           "module_type": {
@@ -341,5 +370,9 @@
         }
       }
     }
+  ],
+  "x-schema-version": "1.1.0",
+  "x-schema-changelog": [
+    "1.1.0: add page.dashboard_source (session dashboard loading seam)."
   ]
 }
