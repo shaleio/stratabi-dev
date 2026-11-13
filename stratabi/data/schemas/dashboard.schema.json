@@ -246,6 +246,48 @@
           "minimum": 1,
           "maximum": 12,
           "description": "Bootstrap column width."
+        },
+        "portrait": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Optional overrides applied ONLY in mobile portrait orientation; ignored everywhere else. Absent = current responsive behavior. Acts within the existing row (no layout-engine change).",
+          "properties": {
+            "order": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000,
+              "description": "Order within the row in portrait."
+            },
+            "width": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12,
+              "description": "Tile width in portrait (existing 12-column convention)."
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 160,
+              "maximum": 1200,
+              "description": "Tile height in pixels in portrait."
+            },
+            "align": {
+              "type": "string",
+              "enum": [
+                "start",
+                "center",
+                "end"
+              ],
+              "description": "Cross-axis alignment in portrait."
+            }
+          }
+        },
+        "hide_on": {
+          "type": "string",
+          "enum": [
+            "portrait",
+            "landscape"
+          ],
+          "description": "Optional: hide this tile in the named device orientation (portrait or landscape). Absent = always shown. Note: desktop counts as landscape."
         }
       }
     },
@@ -1192,8 +1234,9 @@
       }
     }
   },
-  "x-schema-version": "1.1.0",
+  "x-schema-version": "1.2.0",
   "x-schema-changelog": [
-    "1.1.0: add input_text block (free-text / textarea); fix input_range & input_select default/value oneOf->anyOf numeric ambiguity."
+    "1.1.0: add input_text block (free-text / textarea); fix input_range & input_select default/value oneOf->anyOf numeric ambiguity.",
+    "1.2.0: add optional layout_position.portrait overrides + layout_position.hide_on (orientation visibility), mobile-responsive & additive; graph_config.displayModeBar already supported."
   ]
 }

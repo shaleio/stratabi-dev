@@ -372,6 +372,38 @@ def hidden_module_controls():
 # -----------------------------------------------
 # TILE RENDERING
 # -----------------------------------------------
+_PORTRAIT_ALIGN = {"start": "flex-start", "center": "center", "end": "flex-end"}
+
+
+def _responsive_col_kwargs(tile: dict) -> dict:
+    """Optional, additive responsive extras (dashboard schema 1.2.0):
+      - position.portrait : per-tile overrides (order/width/height/align) applied in mobile portrait
+      - position.hide_on  : hide the tile in the named orientation ('portrait' | 'landscape')
+    Emits CSS custom properties + marker classes consumed by assets/portrait.css. No effect on
+    desktop (except an explicit hide_on='landscape') and none when both fields are absent."""
+    pos = tile.get("position") or {}
+    classes, style = [], {}
+    p = pos.get("portrait")
+    if isinstance(p, dict) and p:
+        classes.append("has-portrait")
+        if "order" in p:
+            style["--p-order"] = str(int(p["order"]))
+        if "width" in p:
+            style["--p-basis"] = f"{int(p['width']) / 12 * 100:.4f}%"
+        if "height" in p:
+            style["--p-height"] = f"{int(p['height'])}px"
+        if "align" in p:
+            style["--p-align"] = _PORTRAIT_ALIGN.get(p.get("align"), "stretch")
+    if pos.get("hide_on") in ("portrait", "landscape"):
+        classes.append(f"hide-on-{pos['hide_on']}")
+    if not classes:
+        return {}
+    out = {"className": " ".join(classes)}
+    if style:
+        out["style"] = style
+    return out
+
+
 def render_tile_card(tile, polling_enabled=False):
     tile_id = tile.get("id")
 
@@ -508,7 +540,8 @@ def build_dashboard_grid(dashboard_config):
         cols = [
             dbc.Col(
                 render_tile_card(tile, polling_enabled=polling_enabled),
-                width=tile.get("position", {}).get("width", 12)
+                width=tile.get("position", {}).get("width", 12),
+                **_responsive_col_kwargs(tile),
             )
             for tile in row_tiles
         ]

@@ -1,0 +1,20 @@
+/* Optional per-tile mobile-portrait overrides (dashboard schema 1.2.0: position.portrait).
+   Scoped to mobile portrait ONLY; desktop, landscape, and tiles without .has-portrait are
+   unaffected. The CSS vars are set inline by the renderer from the tile's position.portrait. */
+@media (max-width: 767px) and (orientation: portrait) {
+  .row > .has-portrait {
+    order: var(--p-order, 0);
+    flex: 0 0 var(--p-basis, 100%);
+    max-width: var(--p-basis, 100%);
+    align-self: var(--p-align, stretch);
+  }
+  /* height: size the tile card, and force a responsive Plotly graph to fill it */
+  .has-portrait[style*="--p-height"] > * { height: var(--p-height); }
+  .has-portrait[style*="--p-height"] .dash-graph,
+  .has-portrait[style*="--p-height"] .js-plotly-plot { height: var(--p-height) !important; }
+}
+
+/* Orientation visibility (schema 1.2.0: position.hide_on). Pure-orientation — desktop counts as
+   landscape. Absent = always shown. Additive; no effect on tiles without the class. */
+@media (orientation: portrait)  { .hide-on-portrait  { display: none !important; } }
+@media (orientation: landscape) { .hide-on-landscape { display: none !important; } }
