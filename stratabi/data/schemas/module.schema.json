@@ -194,10 +194,10 @@
         },
         "interval_ms": {
           "type": "integer",
-          "minimum": 5000,
+          "minimum": 1000,
           "maximum": 3600000,
           "default": 60000,
-          "description": "Poll interval in milliseconds."
+          "description": "Poll interval in milliseconds (min 1000). Async polling runs only while a tile is in flight."
         }
       },
       "allOf": [

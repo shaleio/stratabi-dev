@@ -54,10 +54,10 @@
         },
         "interval_ms": {
           "type": "integer",
-          "minimum": 5000,
+          "minimum": 1000,
           "maximum": 3600000,
           "default": 60000,
-          "description": "Refresh interval in milliseconds."
+          "description": "Interval in milliseconds for the dashboard clock (min 1000). When the clock only exists to poll async tiles (no interval/always tiles), it runs only while a tile is in flight."
         }
       },
       "allOf": [
@@ -1097,6 +1097,10 @@
         "block": {
           "$ref": "#/$defs/block"
         },
+        "placeholder": {
+          "type": "string",
+          "description": "Markdown shown in the tile until its first result renders — e.g. 'Press ▷ to provision.' Use it on manual (action) tiles and tiles that wait for input, so an empty card explains itself. Replaced by the tile's output; never shown again once a result arrives."
+        },
         "tags": {
           "type": "array",
           "items": {
@@ -1234,9 +1238,10 @@
       }
     }
   },
-  "x-schema-version": "1.2.0",
+  "x-schema-version": "1.3.0",
   "x-schema-changelog": [
     "1.1.0: add input_text block (free-text / textarea); fix input_range & input_select default/value oneOf->anyOf numeric ambiguity.",
-    "1.2.0: add optional layout_position.portrait overrides + layout_position.hide_on (orientation visibility), mobile-responsive & additive; graph_config.displayModeBar already supported."
+    "1.2.0: add optional layout_position.portrait overrides + layout_position.hide_on (orientation visibility), mobile-responsive & additive; graph_config.displayModeBar already supported.",
+    "1.3.0: add optional tile.placeholder (markdown shown until the tile's first result), additive."
   ]
 }
