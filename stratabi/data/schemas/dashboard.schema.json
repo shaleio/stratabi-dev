@@ -425,7 +425,19 @@
         "async": {
           "type": "boolean",
           "default": false,
-          "description": "Currently honored only when exec.type is athena. If true, StrataBI invokes the async Athena runner, which writes a normalized dataframe artifact to the status_context result location. For lambda execution, module Lambdas already use the status_context artifact flow. For cache execution, core directly reads cache_s3_uri."
+          "description": "Athena only. If true, StrataBI invokes the async Athena runner, which writes a normalized dataframe artifact to the status_context result location. Lambda tiles run in the background by default (see `sync`); cache tiles read cache_s3_uri directly."
+        },
+        "sync": {
+          "type": "boolean",
+          "default": false,
+          "description": "Lambda only. If true, StrataBI calls the module Lambda and waits for its answer (RequestResponse) instead of invoking it in the background and polling for completion, so fast tiles render immediately. Same module contract: the Lambda still writes its artifact to status_context.result_s3_key (it stays in S3, inspectable and downloadable) and returns {\"status\", \"message\"}. Every call is a fresh run (not cached), which suits action tiles. Use for work that finishes in seconds; long work should stay async."
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120,
+          "default": 30,
+          "description": "Lambda + sync only. How long the tile waits for the Lambda's answer before failing (1-120, default 30)."
         }
       },
       "allOf": [
@@ -1238,10 +1250,11 @@
       }
     }
   },
-  "x-schema-version": "1.3.0",
+  "x-schema-version": "1.4.0",
   "x-schema-changelog": [
     "1.1.0: add input_text block (free-text / textarea); fix input_range & input_select default/value oneOf->anyOf numeric ambiguity.",
     "1.2.0: add optional layout_position.portrait overrides + layout_position.hide_on (orientation visibility), mobile-responsive & additive; graph_config.displayModeBar already supported.",
-    "1.3.0: add optional tile.placeholder (markdown shown until the tile's first result), additive."
+    "1.3.0: add optional tile.placeholder (markdown shown until the tile's first result), additive.",
+    "1.4.0: add exec.sync + exec.timeout_seconds (synchronous Lambda tiles), additive."
   ]
 }
