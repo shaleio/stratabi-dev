@@ -36,3 +36,15 @@
 .stratabi-md blockquote p:last-child { margin-bottom: 0; }
 .stratabi-md table { display: block; max-width: 100%; overflow-x: auto; }
 .stratabi-md code { color: var(--bs-info); }
+
+/* AG Grid icons (sort arrows, menu, filter): some themes force a text font on every span with
+   !important, which turns the icon glyphs into empty boxes. Give icons their own font back. */
+.ag-icon { font-family: var(--ag-icon-font-family) !important; }
+
+/* StrataCopyCell: short text + Copy button for long values (errors). */
+.sbi-copy-cell { display: flex; align-items: center; gap: .5rem; min-width: 0; height: 100%; }
+.sbi-copy-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; opacity: .85; }
+.sbi-copy-btn { flex: none; font-size: .72rem; line-height: 1.2; padding: .1rem .45rem; border-radius: .25rem;
+                border: 1px solid var(--bs-border-color, rgba(127,127,127,.4)); background: transparent;
+                color: var(--bs-primary, inherit); cursor: pointer; }
+.sbi-copy-btn:hover { background: var(--bs-primary, #34b6c4); color: var(--bs-body-bg, #000); }

@@ -2,6 +2,11 @@
 
 All notable changes. Versions follow `stratabi/__init__.py`.
 
+## [1.7.6] — 2026-11-15
+
+- AG Grid icons (sort arrows, menus) no longer render as boxes; new `StrataCopyCell` cell renderer
+  (`{"field": "Error", "cellRenderer": "StrataCopyCell"}`) — same as core 1.7.25.
+
 ## [1.7.5] — 2026-11-15
 
 **Runtime parity with StrataBI core 1.7.23** — dashboard schema **1.6.0**, module schema **1.4.0**.
