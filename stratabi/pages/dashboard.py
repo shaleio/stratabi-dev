@@ -260,6 +260,10 @@ def _apply_card_style(layout: list, style: str | None) -> list:
         elif not own:
             card.update(color=None, outline=False)
             t["_card_class"] = f"sbi-card-match sbi-surface-{_module_surface()}"
+        else:
+            # A tile's own color tells the page's story (select / act / view): keep its colored
+            # outline, but on the module's surface so HTML tiles still blend in.
+            t["_card_class"] = f"sbi-surface-{_module_surface()}"
         t["card"] = card
         out.append(t)
     return out
@@ -719,15 +723,18 @@ def render_tile_card(tile, polling_enabled=False, dashboard_key=None, url_search
     control_buttons = []
 
     if tile_controls.get("run_button", _buttons_default):
+        # controls.run_icon "refresh" (↻) for re-reading something (option lists, views); the
+        # default ▷ for actions that do something.
+        _refresh = tile_controls.get("run_icon") == "refresh"
         control_buttons.append(
             dbc.Button(
-                "▷",
+                "↻" if _refresh else "▷",
                 id={"type": "tile-run", "tile_id": tile_id},
                 color="primary",
                 size="sm",
                 outline=True,
                 n_clicks=0,
-                title="Run tile",
+                title="Refresh" if _refresh else "Run tile",
                 className="me-1",
             )
         )

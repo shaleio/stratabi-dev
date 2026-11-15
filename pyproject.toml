@@ -32,7 +32,7 @@ classifiers = [
 # Heavy data/ML libraries used only by Lambda functions or the build are in the
 # [lambda] extra below, so they are NOT installed into a pipx runtime environment.
 dependencies = [
-    "dash>=4.1,<5",
+    "dash>=4.5,<5",
     "dash-bootstrap-components>=2.0,<3",
     "dash-ag-grid>=2",
     "plotly>=5.22,<6",

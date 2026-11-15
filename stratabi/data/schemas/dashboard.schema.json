@@ -372,6 +372,15 @@
           "type": "boolean",
           "default": false,
           "description": "Show a per-tile run button (▷) that triggers this tile's execution independently of the dashboard refresh. If omitted, the runtime shows it automatically on tiles that have an exec and are not input/control blocks; set false to suppress it, or true to force it. Best paired with load.mode = manual."
+        },
+        "run_icon": {
+          "type": "string",
+          "enum": [
+            "play",
+            "refresh"
+          ],
+          "default": "play",
+          "description": "Icon on the run button: play (▷, default) for actions that do something; refresh (↻) for tiles that re-read something (option lists, views)."
         }
       },
       "description": "Per-tile UI controls."
@@ -1283,19 +1292,31 @@
                 }
               ],
               "description": "Alias/fallback for value."
+            },
+            "input_type": {
+              "type": "string",
+              "enum": [
+                "text",
+                "date",
+                "time",
+                "number"
+              ],
+              "default": "text",
+              "description": "Single-line input kind (multiline: false): text, date (browser date picker; value YYYY-MM-DD), time (HH:MM) or number."
             }
           }
         }
       }
     }
   },
-  "x-schema-version": "1.6.0",
+  "x-schema-version": "1.7.0",
   "x-schema-changelog": [
     "1.1.0: add input_text block (free-text / textarea); fix input_range & input_select default/value oneOf->anyOf numeric ambiguity.",
     "1.2.0: add optional layout_position.portrait overrides + layout_position.hide_on (orientation visibility), mobile-responsive & additive; graph_config.displayModeBar already supported.",
     "1.3.0: add optional tile.placeholder (markdown shown until the tile's first result), additive.",
     "1.4.0: add exec.sync + exec.timeout_seconds (synchronous Lambda tiles), additive.",
     "1.5.0: add optional config.theme_colors (plotly/plotly_resampler), load.keep_previous (async tiles) and layout_position.stack, additive.",
-    "1.6.0: add optional tile.flavor_text (custom working word(s) for the building badge), additive."
+    "1.6.0: add optional tile.flavor_text (custom working word(s) for the building badge), additive.",
+    "1.7.0: add optional tile.controls.run_icon (play | refresh) and input_text config.input_type (text | date | time | number), additive."
   ]
 }

@@ -42,8 +42,10 @@ class InputTextBlock(Block):
 
         return dcc.Input(
             id=comp_id,
-            value=value or "",
-            type="text",
+            value=value if value not in (None, "") else "",
+            # input_type (schema 1.7.0): text | date (browser date picker, value YYYY-MM-DD) |
+            # time (HH:MM) | number
+            type=cfg.get("input_type") if cfg.get("input_type") in ("text", "date", "time", "number") else "text",
             placeholder=placeholder,
             maxLength=maxlength,
             debounce=bool(cfg.get("debounce", True)),

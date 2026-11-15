@@ -146,7 +146,7 @@ def test_card_style_match_uses_module_html_background_and_bares_text_tiles():
     out = d._apply_card_style(layout, "match")
     assert out[0]["_card_class"] == "sbi-card-bare"
     assert out[1]["_card_class"] == "sbi-card-match sbi-surface-dark" and out[1]["card"]["outline"] is False
-    assert out[2]["card"] == {"color": "danger"} and "_card_class" not in out[2]   # own color wins
+    assert out[2]["card"] == {"color": "danger"} and out[2]["_card_class"] == "sbi-surface-dark"  # own color kept, on the surface
     assert "card" not in layout[1]                                # module JSON untouched
     os.environ["STRATABI_THEME"] = "flatly"
     assert d._apply_card_style(layout, "match")[1]["_card_class"].endswith("sbi-surface-light")

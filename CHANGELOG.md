@@ -2,6 +2,11 @@
 
 All notable changes. Versions follow `stratabi/__init__.py`.
 
+## [1.7.7] — 2026-11-15
+
+- Dash 4.5; `controls.run_icon` (`refresh` ↻ / `play` ▷, schema 1.7.0); colored app cards keep their
+  color on the module surface — same as core 1.7.27.
+
 ## [1.7.6] — 2026-11-15
 
 - AG Grid icons (sort arrows, menus) no longer render as boxes; new `StrataCopyCell` cell renderer
