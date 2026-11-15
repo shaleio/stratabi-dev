@@ -218,7 +218,6 @@ app.layout = html.Div([
              **{"data-theme": STRATABI_EDITOR_THEME},
              style={"display": "none"}),
     dcc.Store(id="dashboard-input-store"),    # Stores input tile values (future)
-    dcc.Store(id="dashboard-status-store"),   # Stores Dynamo/Lambda statuses
     dcc.Store(id="dashboard-trigger-store"),  # Stores most recent input tile triggered
     dcc.Store(id="dashboard-run-store"),      # Per-tile run (▷) button target; separate from the trigger bus
     dcc.Store(id="dashboard-selector-store"),

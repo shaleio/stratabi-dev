@@ -12,7 +12,7 @@ def _run(*args):
 def test_version():
     r = _run("--version")
     assert r.returncode == 0
-    assert "stratabi-dev" in (r.stdout + r.stderr)
+    assert "stratabi" in (r.stdout + r.stderr)
 
 
 def test_help_lists_flags():

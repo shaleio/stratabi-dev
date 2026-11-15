@@ -41,7 +41,12 @@ Exec rules:
 * cache: directly loads an existing artifact from cache_s3_uri.
 * athena: runs SQL through Athena.
 * lambda: invokes a registered StrataBI module Lambda.
-* exec.async is currently honored only for athena. Lambda module execution already uses the async status_context artifact flow.
+* exec.async is honored only for athena. Lambda module tiles run in the background (polled) by default; set exec.sync: true (optional exec.timeout_seconds, 1-120, default 30) for quick module calls that should render immediately. Keep long work (model calls, scans, provisioning) async.
+* position.stack: tiles in one row sharing a stack name render as a single column, one under another (e.g. controls beside a tall chart).
+* load.keep_previous: true (async tiles) keeps the last successful result on screen with an "Updating…" badge while a new run is in flight; a failed run leaves it marked stale.
+* plotly / plotly_resampler config.theme_colors: true gives a chart the app theme's colors (series, text, gridlines); prefer it over hard-coded colors.
+* tile.placeholder (optional markdown) is shown until a tile's first result renders; use it on manual action tiles and input-driven tiles, e.g. "Pick a workspace, then press ▷."
+* tile.flavor_text (optional) sets the working word(s) in the tile's loading badge: a string ("Drilling") or a list that rotates (["Coring", "Logging"]), each ≤ 40 characters. Omit it unless asked — the runtime has a default word bank.
 * cache_s3_uri should be a full s3:// URI for user-provided artifacts.
 * Internal runtime results use system_bucket + result_s3_key.
 
@@ -61,6 +66,7 @@ Blocks:
 * table: renders dataframe results in a table/grid.
 * input_select: block.config maps to a selector component.
 * input_range: block.config maps to a range/slider-style component.
+* input_text: free-text input (multi-line textarea, or single-line with multiline: false) stored under input_id.
 * markdown, image, raw_html: render static or artifact-backed content.
 * Input blocks write values to the dashboard input store; queries read from the store via query.params.
 * A tile whose query uses an input (via query.params) MUST list the input tile's id in its `triggered_by` so it re-runs when the input changes. Give each input block a sensible `config.value` default so the tile also runs correctly on first load.
@@ -110,8 +116,18 @@ LIMIT 150
 
 The generated Glue table points to the original S3 location. The source parquet is not copied.
 
+Layout sizing:
+
+* position.width is Bootstrap columns (1-12). Size tiles to their content: short text, a single
+  KPI/number, a status line or one input control → 3-4; a small chart → 6; tables, wide charts
+  and long markdown → 12. Don't make every tile 12 wide.
+* Optional position.portrait overrides layout on narrow/portrait screens; position.hide_on hides
+  a tile in portrait or landscape.
+
 Objective:
-Generate valid StrataBI dashboard JSON following the schema at https://shaleio.com/schemas/dashboard.schema.json.
+Generate valid StrataBI dashboard JSON conforming to the dashboard JSON Schema included with
+this request (also published at https://shaleio.com/schemas/dashboard.schema.json). The included
+schema is authoritative: use only the properties it defines.
 
 Canonical patterns:
 

@@ -457,32 +457,12 @@ def _display_name_from_config(
 def dashboard_search_text(
     dashboard_id: str,
     cfg: dict[str, Any] | None = None,
-    *,
-    is_pinned: bool = False,
-    is_favorite: bool = False,
-    is_recent: bool = False,
 ) -> str:
-    """
-    Search text for dcc.Dropdown.
-
-    Includes symbolic tokens:
-      ! -> pinned
-      * -> favorite
-      # -> recent
-    """
+    """Search text for dcc.Dropdown: display name, id, global marker, timestamp and tags."""
     meta = parse_dashboard_identifier(dashboard_id)
     display_name = _display_name_from_config(dashboard_id, cfg)
 
     parts = [display_name, dashboard_id]
-
-    if is_pinned:
-        parts.extend(["!", "pinned", "pin"])
-
-    if is_favorite:
-        parts.extend(["*", "favorite", "star"])
-
-    if is_recent:
-        parts.extend(["#", "recent", "clock"])
 
     if meta["is_global"]:
         parts.extend(["G", "global"])
@@ -494,7 +474,7 @@ def dashboard_search_text(
         tags = meta.get("tags", [])
         parts.extend(tags)
         parts.extend([f"tag:{tag}" for tag in tags])
-    except:
+    except Exception:
         pass
 
     return " ".join(parts)
@@ -503,37 +483,18 @@ def dashboard_search_text(
 def dashboard_dropdown_label(
     dashboard_id: str,
     cfg: dict[str, Any] | None = None,
-    *,
-    is_pinned: bool = False,
-    is_favorite: bool = False,
-    is_recent: bool = False,
 ):
     """
     Rich Dash dropdown label.
 
     value remains dashboard_id.
-    label becomes a component with visual badges.
+    label becomes a component with visual badges (global, tags, saved timestamp).
     search should be provided separately.
     """
     meta = parse_dashboard_identifier(dashboard_id)
     display_name = _display_name_from_config(dashboard_id, cfg)
 
-    children: list[Any] = []
-
-    if is_pinned:
-        children.append(
-            html.Span("📌", className="me-1", title="Pinned dashboard")
-        )
-    elif is_favorite:
-        children.append(
-            html.Span("⭐", className="me-1", title="Favorite dashboard")
-        )
-    elif is_recent:
-        children.append(
-            html.Span("🕘", className="me-1", title="Recent dashboard")
-        )
-
-    children.append(html.Span(display_name, className="me-2"))
+    children: list[Any] = [html.Span(display_name, className="me-2")]
 
     if meta["is_global"]:
         children.append(
@@ -543,7 +504,7 @@ def dashboard_dropdown_label(
                 title="Global dashboard",
             )
         )
-    
+
     for tag in meta.get("tags", []):
         children.append(
             html.Span(
@@ -616,34 +577,6 @@ def _dashboard_key_for_new_save(
 # Overlay Helper
 # ---------------------------------------------------------------------
 
-def _overlay_item_to_dashboard_option(item: dict[str, Any]) -> dict[str, Any] | None:
-    dashboard_key = item.get("dashboard_key") or item.get("s3_key")
-    dashboard_id = item.get("dashboard_id")
-
-    if dashboard_key:
-        dashboard_id = dashboard_id or dashboard_id_from_key(dashboard_key)
-        value = dashboard_key
-    elif dashboard_id:
-        # Migration fallback for old simple overlay rows.
-        value = dashboard_id
-    else:
-        return None
-
-    cfg_meta = {
-        "name": item.get("label") or item.get("name"),
-        "label": item.get("label") or item.get("name"),
-    }
-
-    return {
-        "label": _display_name_from_config(dashboard_id, cfg_meta),
-        "value": value,
-        "dashboard_id": dashboard_id,
-        "search": dashboard_search_text(dashboard_id, cfg_meta),
-        "s3_key": dashboard_key,
-        "last_modified": None,
-        "cfg_meta": cfg_meta,
-        "from_overlay": True,
-    }
 
 # ---------------------------------------------------------------------
 # Actor / identity
@@ -907,7 +840,7 @@ def list_dashboard_git_registered() -> list[dict[str, Any]]:
     table = _get_table("STRATABI_DASHBOARD_GIT_REGISTRY")
     if table is None:
         return []
-    return _query_dashboard_overlay_items(table, pk_value="GLOBAL")
+    return _query_registry_items(table, pk_value="GLOBAL")
 
 
 def save_dashboard_json(
@@ -1013,97 +946,12 @@ def _list_s3_dashboard_options_for_prefix(
 
     return options
 
-# ---------------------------------------------------------------------
-# Dynamo overlays: favorites, pinned, recents
-# ---------------------------------------------------------------------
 
 
-def _query_recent_dashboard_keys(
-    table,
-    user_id: str,
-    limit: int = 50,
-    deduped_limit: int = 25,
-) -> list[str]:
-    """
-    Recents model, new key-first shape:
-      pk = USER#alex
-      sk = RECENT#2026-04-30T22:30:00Z#<dashboard_key>
-      dashboard_key = analyst/dashboards/2026_05/users/alex/foo.json
-
-    Migration fallback:
-      old rows may only have dashboard_id.
-    """
-    if table is None or not user_id:
-        return []
-
-    response = table.query(
-        KeyConditionExpression=Key("pk").eq(f"USER#{user_id}")
-        & Key("sk").begins_with("RECENT#"),
-        ScanIndexForward=False,
-        Limit=limit,
-    )
-
-    seen: set[str] = set()
-    ordered: list[str] = []
-
-    for item in response.get("Items", []):
-        dashboard_key = item.get("dashboard_key") or item.get("s3_key")
-
-        # Migration fallback for old simple rows.
-        if not dashboard_key:
-            dashboard_key = item.get("dashboard_id")
-
-        # Last fallback: parse from sk.
-        if not dashboard_key:
-            sk = item.get("sk", "")
-            # RECENT#timestamp#dashboard_key
-            parts = sk.split("#", 2)
-            if len(parts) == 3:
-                dashboard_key = parts[2]
-
-        if dashboard_key and dashboard_key not in seen:
-            seen.add(dashboard_key)
-            ordered.append(dashboard_key)
-
-        if len(ordered) >= deduped_limit:
-            break
-
-    return ordered
 
 
-# Favorites + pinned removed in the community/local edition (DynamoDB overlay
-# tables not used). Dashboard listing comes straight from S3.
 
 
-def record_dashboard_recent(
-    user_id: str,
-    dashboard_key: str,
-    label: str | None = None,
-) -> None:
-    table = _get_table("STRATABI_DASHBOARD_RECENTS")
-    if table is None or not user_id or not dashboard_key:
-        return
-
-    dashboard_id = dashboard_id_from_value(dashboard_key)
-
-    now = datetime.now(timezone.utc)
-    opened_at = now.isoformat(timespec="seconds")
-    ttl_epoch = int((now + timedelta(days=90)).timestamp())
-
-    item = {
-        "pk": f"USER#{user_id}",
-        "sk": f"RECENT#{opened_at}#{dashboard_key}",
-        "dashboard_key": dashboard_key,
-        "s3_key": dashboard_key,
-        "dashboard_id": dashboard_id,
-        "opened_at": opened_at,
-        "ttl_epoch": ttl_epoch,
-    }
-
-    if label:
-        item["label"] = label
-
-    table.put_item(Item=item)
 
 
 # ---------------------------------------------------------------------
@@ -1141,21 +989,12 @@ def list_dashboards_from_s3(
     max_options: int = 1000,
 ) -> list[dict[str, Any]]:
     """
-    Return Dash dropdown options for dashboards.
+    Return Dash dropdown options for dashboards, straight from S3 (value = S3 key).
 
-    Canonical value:
-      value = S3 key
-
-    Default working-set mode, when no date range is selected:
-      - all pinned overlays
-      - all user favorite overlays
-      - all user recent overlays
-      - previous 90 days of S3 dashboards for global + current user
-
-    Explicit date-search mode, when both start_date and end_date are selected:
-      - S3 dashboards from matching month prefixes
-      - filtered by parsed dashboard timestamp
-      - decorated with pinned/favorite/recent overlays
+    Default mode (no date range): the previous 90 days of global + current-user dashboards,
+    plus the default dashboard.
+    Date-search mode (both start_date and end_date): dashboards from the matching month
+    prefixes, filtered by their parsed filename timestamp.
     """
     effective_user_id = user_id or resolve_actor_token()
     bucket = get_system_bucket()
@@ -1164,41 +1003,8 @@ def list_dashboards_from_s3(
     end = parse_iso_date(end_date)
     explicit_date_range = bool(start and end)
 
-    # Community/local edition: favorites + pinned removed, and recents dropped
-    # so no DynamoDB overlay tables are required to run. Listing is pure S3.
-    favorite_items: list[dict[str, Any]] = []
-    pinned_items: list[dict[str, Any]] = []
-    recent_keys: list[str] = []
-
-    def overlay_key(item: dict[str, Any]) -> str | None:
-        return item.get("dashboard_key") or item.get("s3_key") or item.get("dashboard_id")
-
-    favorite_keys = {
-        key
-        for item in favorite_items
-        if (key := overlay_key(item))
-    }
-
-    pinned_keys = {
-        key
-        for item in pinned_items
-        if (key := overlay_key(item))
-    }
-
-    recent_rank = {
-        dashboard_key: index
-        for index, dashboard_key in enumerate(recent_keys)
-    }
-
-    if explicit_date_range:
-        months = months_between(start, end)
-    else:
-        months = months_for_previous_days(90)
-
-    prefixes = dashboard_prefixes_for_user_months(
-        user_id=effective_user_id,
-        months=months,
-    )
+    months = months_between(start, end) if explicit_date_range else months_for_previous_days(90)
+    prefixes = dashboard_prefixes_for_user_months(user_id=effective_user_id, months=months)
 
     dashboards = _list_dashboard_options_for_prefixes(
         bucket=bucket,
@@ -1206,7 +1012,7 @@ def list_dashboards_from_s3(
         max_workers=int(os.getenv("STRATABI_DASHBOARD_LIST_WORKERS", "8")),
     )
 
-    # Add default dashboard explicitly because it lives outside month prefixes.
+    # The default dashboard lives outside the month prefixes.
     try:
         default_key = default_dashboard_key()
         default_cfg_meta = _try_load_dashboard_name(bucket, default_key)
@@ -1215,7 +1021,6 @@ def list_dashboards_from_s3(
                 "label": _display_name_from_config("default", default_cfg_meta),
                 "value": default_key,
                 "dashboard_id": "default",
-                "search": dashboard_search_text("default", default_cfg_meta),
                 "s3_key": default_key,
                 "last_modified": None,
                 "cfg_meta": default_cfg_meta,
@@ -1224,77 +1029,27 @@ def list_dashboards_from_s3(
     except Exception:
         pass
 
-    # Default mode includes overlay-resurfaced dashboards even if they live
-    # outside the 90-day S3 prefix window.
-    if not explicit_date_range:
-        for item in pinned_items + favorite_items:
-            option = _overlay_item_to_dashboard_option(item)
-            if option:
-                dashboards.append(option)
-
-        for dashboard_key in recent_keys:
-            dashboard_id = dashboard_id_from_value(dashboard_key)
-
-            dashboards.append(
-                {
-                    "label": label_from_identifier(dashboard_id),
-                    "value": dashboard_key,
-                    "dashboard_id": dashboard_id,
-                    "search": dashboard_search_text(
-                        dashboard_id,
-                        is_recent=True,
-                        is_favorite=dashboard_key in favorite_keys,
-                        is_pinned=dashboard_key in pinned_keys,
-                    ),
-                    "s3_key": dashboard_key if "/" in dashboard_key else None,
-                    "last_modified": None,
-                    "cfg_meta": None,
-                    "from_overlay": True,
-                }
-            )
-
-    # De-dupe by canonical value / S3 key.
-    # Prefer real S3-listed item over overlay-only item.
+    # De-dupe by S3 key, keeping the most recently modified listing.
     by_value: dict[str, dict[str, Any]] = {}
-
     for item in dashboards:
-        value = item["value"]
-        existing = by_value.get(value)
-
-        if existing is None:
-            by_value[value] = item
-            continue
-
-        existing_is_overlay = bool(existing.get("from_overlay"))
-        item_is_overlay = bool(item.get("from_overlay"))
-
-        if existing_is_overlay and not item_is_overlay:
-            by_value[value] = item
-            continue
-
-        existing_lm = existing.get("last_modified")
-        item_lm = item.get("last_modified")
-
-        if item_lm and existing_lm and item_lm > existing_lm:
-            by_value[value] = item
-
+        existing = by_value.get(item["value"])
+        if existing is None or (item.get("last_modified") and existing.get("last_modified")
+                                and item["last_modified"] > existing["last_modified"]):
+            by_value[item["value"]] = item
     dashboards = list(by_value.values())
 
     # Visibility is based on parsed filename stem, not the full S3 key.
     dashboards = [
-        item
-        for item in dashboards
+        item for item in dashboards
         if dashboard_visible_to_user(
             item.get("dashboard_id") or dashboard_id_from_value(item["value"]),
             effective_user_id,
         )
     ]
 
-    # Explicit date mode filters by filename timestamp.
     if explicit_date_range:
         dashboards = [
-            item
-            for item in dashboards
+            item for item in dashboards
             if dashboard_in_date_range(
                 item.get("dashboard_id") or dashboard_id_from_value(item["value"]),
                 start=start,
@@ -1302,51 +1057,18 @@ def list_dashboards_from_s3(
             )
         ]
 
-    def priority(item: dict[str, Any]) -> tuple[int, int, str]:
-        value = item["value"]
-        label = str(item.get("label") or "").lower()
-
-        if value in pinned_keys:
-            return (0, 0, label)
-
-        if value in favorite_keys:
-            return (1, 0, label)
-
-        if value in recent_rank:
-            return (2, recent_rank[value], label)
-
-        return (3, 0, label)
-
-    dashboards.sort(key=priority)
+    dashboards.sort(key=lambda item: str(item.get("label") or "").lower())
 
     options: list[dict[str, Any]] = []
-
     for item in dashboards[:max_options]:
         value = item["value"]
         dashboard_id = item.get("dashboard_id") or dashboard_id_from_value(value)
         cfg_meta = item.get("cfg_meta")
-
-        is_pinned = value in pinned_keys
-        is_favorite = value in favorite_keys
-        is_recent = value in recent_rank
-
         options.append(
             {
-                "label": dashboard_dropdown_label(
-                    dashboard_id,
-                    cfg_meta,
-                    is_pinned=is_pinned,
-                    is_favorite=is_favorite,
-                    is_recent=is_recent,
-                ),
+                "label": dashboard_dropdown_label(dashboard_id, cfg_meta),
                 "value": value,
-                "search": dashboard_search_text(
-                    dashboard_id,
-                    cfg_meta,
-                    is_pinned=is_pinned,
-                    is_favorite=is_favorite,
-                    is_recent=is_recent,
-                ),
+                "search": dashboard_search_text(dashboard_id, cfg_meta),
             }
         )
 
@@ -1388,7 +1110,7 @@ def list_dashboard_keys(user_id: str | None = None) -> list[str]:
     return [opt["value"] for opt in list_dashboards_from_s3(user_id=user_id)]
 
 
-def _query_dashboard_overlay_items(
+def _query_registry_items(
     table,
     pk_value: str,
     sk_prefix: str = "DASHBOARD#",

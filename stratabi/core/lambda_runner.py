@@ -53,6 +53,46 @@ def invoke_lambda_async(lambda_arn: str, payload: dict[str, Any]) -> dict[str, A
     }
 
 
+_sync_clients: dict[int, Any] = {}
+
+SYNC_TIMEOUT_DEFAULT = 30
+SYNC_TIMEOUT_MAX = 120
+
+
+def invoke_lambda_sync(lambda_arn: str, payload: dict[str, Any], timeout_seconds: int = SYNC_TIMEOUT_DEFAULT) -> dict[str, Any]:
+    """RequestResponse invoke for `exec.sync` tiles. No retries (a retried action tile could
+    act twice); the read timeout bounds how long the tile's callback can block."""
+    if not lambda_arn:
+        raise ValueError("lambda_arn is required")
+    timeout = max(1, min(int(timeout_seconds or SYNC_TIMEOUT_DEFAULT), SYNC_TIMEOUT_MAX))
+    client = _sync_clients.get(timeout)
+    if client is None:
+        from botocore.config import Config
+        from stratabi.core.config import aws_region
+        client = boto3.client(
+            "lambda",
+            region_name=aws_region(),
+            config=Config(read_timeout=timeout + 5, connect_timeout=5, retries={"max_attempts": 0}),
+        )
+        _sync_clients[timeout] = client
+
+    response = client.invoke(
+        FunctionName=lambda_arn,
+        InvocationType="RequestResponse",
+        Payload=json.dumps(payload, default=str).encode("utf-8"),
+    )
+    raw = response["Payload"].read() if response.get("Payload") is not None else b""
+    try:
+        body = json.loads(raw or b"{}")
+    except ValueError:
+        body = {"raw": raw.decode("utf-8", errors="replace")}
+    return {
+        "status_code": response.get("StatusCode"),
+        "function_error": response.get("FunctionError"),
+        "payload": body if isinstance(body, dict) else {"result": body},
+    }
+
+
 def resolve_module_for_execution(module_id: str, lambda_index: int) -> dict[str, Any]:
     """
     Resolve a module_id + lambda_index into a concrete Lambda config.

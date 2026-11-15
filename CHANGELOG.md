@@ -2,6 +2,61 @@
 
 All notable changes. Versions follow `stratabi/__init__.py`.
 
+## [1.7.5] — 2026-11-15
+
+**Runtime parity with StrataBI core 1.7.23** — dashboard schema **1.6.0**, module schema **1.4.0**.
+Same dashboard and app runtime as Enterprise, so what you build here behaves the same when it ships.
+Enterprise-only surfaces stay out (see "Not in this edition" below).
+
+### Added
+- **Apps playground.** `/dashboard/apps/<module_id>` routes are registered, so module apps open from
+  the navbar. Module `ui` settings work: `show_refresh` / `show_status` (toolbar buttons on app
+  pages) and `card_style` (`match` / `muted`). Page tabs keep input choices across tab switches,
+  and `dashboard_source` pages reload on Refresh.
+- **`exec.sync`** Lambda tiles (+ `exec.timeout_seconds`) and **`inline_html`** sync responses.
+- **Module contract fields** `actor`, `actor_verified`, `auth_mode` and `trigger` in every Lambda
+  event. This edition has no sign-in, so the actor is always the unverified shared actor
+  (`anonymous`, `false`, `none`) — exactly what a deployment without auth sends. Build modules to
+  treat `actor_verified: false` as "no individual user".
+- **Layout + loading:** `position.stack` (a column of tiles beside a tall one), reserved tile
+  heights, `load.keep_previous` (last result stays up while a run is in flight; failures marked
+  stale), static tiles rendered at build time, empty-result notes.
+- **Building badge.** Loading tiles show a working-word badge (*Drilling…*, *Smelting…*,
+  *Stratifying…*) with a quiet *Refresh to check* hint. Set your own per tile with
+  **`tile.flavor_text`** (string or list, schema 1.6.0).
+- **Theme-aware charts** — plotly `config.theme_colors: true` (or `STRATABI_PLOTLY_THEME_COLORS=1`).
+- `/dashboard/<key>` and `?input_id=value` URLs select a dashboard and seed its inputs.
+- Stale async runs (no completion within 15 min) are marked FAILED with a retry hint.
+
+- **`triggered_by` can name an action tile:** when its ▷ run finishes, those tiles re-run (lists
+  and dropdowns refresh after Create/Save/Delete).
+- Markdown tiles take theme accents; wide markdown tables scroll inside the card.
+
+### Fixed
+- **`dashboard_source` session dashboards load** from the system bucket (`STRATABI_BUCKET` was read
+  and is unset on standard installs).
+- **`triggered_by`** matches an input tile id or its `input_id` (tile ids never matched before).
+- **`input_range` sliders feed the input store** (their value never reached tiles) and show the
+  chosen value on the handle.
+- Builder schema validation uses draft 2020-12 and names the failing field
+  of a block (e.g. `/layout/0/block/config/height`) instead of "not valid under any of the given
+  schemas"; it is never silently skipped.
+
+### Removed
+- Leftover Enterprise code: dashboard recents (wrote to a table this edition doesn't have and only
+  the Enterprise home reads), the unreachable favorites/pins overlay logic and its ⭐/📌/🕘 option
+  icons in the dashboard list, the empty `core/icons.py`, an unused status store, and the unused
+  Bedrock model id / generation prompt in `ai_helpers` (now documented as the LLM-context +
+  schema helpers for bring-your-own-AI).
+- `infra/README.md` and `infra/smoke_test.sh` described the hosted Enterprise topology (ALB, ECS,
+  favorites/pinned/recents tables); they now match this data-plane-only module.
+
+### Not in this edition (by design)
+Favorites, pins, the git-registry toggle, RBAC, sign-in, the workspace home page, template previews
+and direct AI generation are Enterprise features. Bring your own agent: the bundled LLM contract
+and schemas (and **Copy LLM context** in the Builder) are the reference for building and testing
+your tooling. `tests/test_edition_boundary.py` keeps it that way.
+
 ## [1.7.4] — 2026-11-08
 
 Fixes from the 1.7.3 retest (N11–N18), completing the partials from 1.7.3.

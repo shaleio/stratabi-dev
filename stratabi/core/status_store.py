@@ -144,3 +144,26 @@ def get_dashboard_statuses(
             statuses[tile_id] = latest
 
     return statuses
+
+def last_succeeded_for_tile(
+    *,
+    dashboard_key: str,
+    runtime_session_id: str | None,
+    tile_id: str,
+    limit: int = 25,
+) -> dict[str, Any] | None:
+    """The newest SUCCEEDED run for this dashboard + runtime session + tile (raw item, so its
+    result contract — result_s3_key/kind/format/bucket — can be loaded), or None. Scoped exactly
+    like every other status read: no cross-dashboard or cross-session results."""
+    runtime_tile_key = _runtime_tile_key(dashboard_key=dashboard_key, runtime_session_id=runtime_session_id,
+                                         tile_id=tile_id)
+    response = _get_status_table().query(
+        IndexName=STATUS_RUNTIME_INDEX_NAME,
+        KeyConditionExpression=Key("runtime_tile_key").eq(runtime_tile_key),
+        ScanIndexForward=False,
+        Limit=limit,
+    )
+    for item in response.get("Items", []):
+        if str(item.get("status", "")).upper() == "SUCCEEDED" and item.get("result_s3_key"):
+            return item
+    return None

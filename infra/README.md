@@ -1,76 +1,66 @@
-# StrataBI — Install (Terraform)
+# StrataBI Developer Edition — data plane (Terraform / OpenTofu)
 
-This module provisions a complete, customer-owned StrataBI runtime in **one AWS
-account**: ALB + ECS Fargate (the Dash app), the async Athena runner and status
-writer Lambdas, DynamoDB tables (tile status, module/source registries,
-favorites/pinned/recents), a Glue catalog database, sharded Athena workgroups,
-and an S3 system bucket seeded with themes and a default dashboard.
+This module provisions the **data plane** a locally-run StrataBI Developer Edition talks to, in
+**one AWS account**. There is no hosted app here: no ALB, ECS, VPC, ECR or Cognito — the app runs
+on your machine (`stratabi`) with your AWS credentials.
+
+What it creates:
+
+- **S3 system bucket** (`<name_prefix>-system-<account>`) seeded with the themes and a default
+  dashboard, plus the runtime prefixes (results, modules, source values, tmp).
+- **Athena + Glue:** a Glue catalog database and sharded Athena workgroups (`<name_prefix>-wg-NN`).
+- **Lambdas:** `<name_prefix>-athena-async` (async Athena runner) and `<name_prefix>-status-writer`
+  (module/tile run status), with an awswrangler layer.
+- **DynamoDB:** tile status, module registry, source registry, and the dashboard **git registry**
+  (dashboards-as-code: `stratactl dashboards … --git-registered`).
+- **IAM:** the Lambda role, and a `<name_prefix>-local-runtime` policy + assumable role with exactly
+  the permissions the local app needs.
 
 ## Prerequisites
 
-- An AWS account and credentials with permission to create the resources above.
-- Terraform >= 1.6.
-- An existing VPC with public subnets (for the ALB) and subnets for ECS tasks.
-- A built StrataBI container image pushed to ECR (`stratabi_image`). The ECR
-  repository `stratabi` is created by this module and can be shared across
-  installs in the same account.
-- (Optional) An ACM certificate in the same region if you enable HTTPS.
+- An AWS account and credentials allowed to create the resources above.
+- OpenTofu or Terraform >= 1.6.
 
-## Quick start
+The simplest path is StrataCTL, which runs this for you:
+
+```bash
+stratactl dev install            # deploy the data plane
+stratactl dev configure-local    # write a non-secret .env from the outputs
+stratabi                         # run the app on http://127.0.0.1:8050
+```
+
+## Running it yourself
 
 ```bash
 cd infra
 cp terraform.tfvars.example terraform.tfvars   # then edit
-terraform init
-terraform validate
-terraform plan        # review carefully (see "Safety notes")
-terraform apply
+tofu init
+tofu validate
+tofu plan          # review carefully (see "Safety notes")
+tofu apply
+tofu output -raw env_file_preview > ../.env    # the STRATABI_* settings for the local app
 ```
 
-After apply, the app is reachable at the ALB DNS name:
-
-```bash
-terraform output alb_dns_name
-```
+Attach the `local_runtime_policy_arn` output to your IAM user, or assume `local_runtime_role_arn`
+(set `local_runtime_assume_principals` to restrict who may).
 
 ## Multiple installs in one account
 
-Every named resource is prefixed by `var.name_prefix` (default `stratabi`). The
-default reproduces the original names exactly, so existing installs see **no
-change**. For a second install in the same account, set a distinct prefix:
+Every named resource is prefixed by `var.name_prefix` (default `stratabi`). For a second install in
+the same account, set a distinct prefix before the first apply:
 
 ```hcl
 name_prefix = "acme"
 ```
 
-Note: the ECR repository and the Glue catalog database are intentionally **not**
-prefixed (the image is the same product; the catalog is shared). If you need
-fully isolated catalogs per install in one account, that is a follow-up.
-
-## HTTPS
-
-HTTPS is off by default (the ALB serves plain HTTP on :80). To enable TLS:
-
-```hcl
-enable_https        = true
-acm_certificate_arn = "arn:aws:acm:us-east-1:<acct>:certificate/<id>"
-```
-
-This adds a :443 listener and a :443 ALB ingress rule. The :80 listener is left
-in place (still forwarding) so nothing breaks. For production you typically want
-:80 to **redirect** to :443 — change the `aws_lb_listener.http` default action
-to a `redirect` block once HTTPS is verified.
+The Glue catalog database is intentionally **not** prefixed (the catalog is shared).
 
 ## Safety notes
 
-- The S3 system bucket and the DynamoDB tables carry `prevent_destroy = true`.
-  This is deliberate (customer data) but means `terraform destroy` and any change
-  that would *replace* them (such as renaming via `name_prefix` on an existing
-  install) will be blocked. Choose `name_prefix` before the first apply.
-- `terraform` is not bundled here; always run `terraform validate` and review
-  `terraform plan` before `apply`. With the default `name_prefix`, the plan
-  should show **no changes** to names.
-- `allowed_ip_cidrs` defaults to open (`0.0.0.0/0`). Restrict it.
+- The S3 system bucket and the DynamoDB tables carry `prevent_destroy = true`. This is deliberate
+  (your data) but means `destroy`, and any change that would *replace* them (such as changing
+  `name_prefix` on an existing install), is blocked. Choose `name_prefix` before the first apply.
+- Always run `validate` and review `plan` before `apply`.
 
 ## Smoke test
 
@@ -80,5 +70,4 @@ After `apply`, verify the install:
 ./smoke_test.sh stratabi us-east-1     # <name_prefix> <region>
 ```
 
-It checks the ALB, ECS service, Lambdas, DynamoDB tables, and S3 bucket exist
-and are healthy.
+It checks the Lambdas, DynamoDB tables, Athena workgroups and the S3 bucket exist.

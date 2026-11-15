@@ -125,4 +125,9 @@ def apply_plotly_template(figure_spec: dict, config: dict) -> dict:
     layout.setdefault("paper_bgcolor", "rgba(0,0,0,0)")
     layout.setdefault("plot_bgcolor", "rgba(0,0,0,0)")
 
+    # config.theme_colors (or STRATABI_PLOTLY_THEME_COLORS): series, text, grid and hover colors
+    # from the active app theme, filled in under anything the figure sets itself.
+    from stratabi.core import theme_colors
+    theme_colors.apply(layout, config)
+
     return patched

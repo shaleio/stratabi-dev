@@ -1,24 +1,17 @@
-"""StrataBI AI helpers"""
+"""LLM-context + schema helpers for bring-your-own-AI workflows.
+
+The Developer Edition makes no model calls. This module assembles the bundled core contract and
+module llm_context.txt files (the Builder's Copy LLM context) and validates dashboards against the
+bundled schema — the reference for building and testing your own agent tooling."""
 
 from __future__ import annotations
 
 import json
 import logging
 import os
-import re
 from importlib.resources import files
 
-logger = logging.getLogger("stratabi.ai")
-
-DEFAULT_MODEL_ID = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
-
-
-# ---------------------------------------------------------------------------
-# Config
-# --------------------------------------------------------------------------
-def _docs_base_url() -> str:
-    return os.getenv("STRATABI_DOCS_BASE_URL", "https://shaleio.com").strip().rstrip("/")
-
+logger = logging.getLogger("stratabi.llm_context")
 
 # ---------------------------------------------------------------------------
 # Bundled resources (shipped in the wheel under stratabi/data/)
@@ -111,37 +104,58 @@ def assemble_llm_context(selected_module_ids: list[str] | None = None) -> str:
 
 
 
+def _validator():
+    schema = json.loads(load_local_schema_text() or "null")
+    if not schema:
+        return None
+    try:
+        from jsonschema import Draft202012Validator as V  # the schema declares draft 2020-12
+    except Exception:  # noqa: BLE001 — older jsonschema
+        from jsonschema import Draft7Validator as V
+    return V(schema)
+
+
+def _branch_errors(err):
+    inst = err.instance
+    if err.validator != "oneOf" or not isinstance(inst, dict) or "type" not in inst or not err.context:
+        return None
+    by_branch = {}
+    for c in err.context:
+        by_branch.setdefault(c.schema_path[0], []).append(c)
+    for errs in by_branch.values():
+        if not any(list(c.schema_path)[-1] == "const" and "type" in list(c.schema_path) for c in errs):
+            return errs
+    return None
+
+
+def schema_errors(dashboard, limit: int = 5) -> list[str]:
+    """Every failing rule as '<path>: <message> [<keyword>]', most specific first (capped)."""
+    v = _validator()
+    if v is None:
+        raise RuntimeError("bundled dashboard schema unavailable")
+    errs = sorted(v.iter_errors(dashboard), key=lambda e: (len(list(e.path)), list(map(str, e.path))))
+    out = []
+    for e in errs:
+        # A block is "oneOf" nine block types; report the errors of the branch matching its `type`
+        # (e.g. config.height must be a string) instead of "not valid under any of the given schemas".
+        for x in (_branch_errors(e) or [e]):
+            path = list(e.path) + (list(x.path) if x is not e else [])
+            loc = "/" + "/".join(str(p) for p in path) if path else "/"
+            out.append(f"{loc}: {x.message[:240]} [{x.validator}]")
+            if len(out) >= limit:
+                return out
+    return out
+
+
 def validate_dashboard(dashboard: dict) -> tuple[bool, str | None]:
-    """Best-effort schema validation. Returns (ok, first_error_message)."""
+    """Validate against the bundled canonical schema. Returns (ok, error_summary). Validation is
+    never silently skipped: if it can't run, that is reported as an error."""
     try:
-        from jsonschema import Draft7Validator
-    except Exception:
-        return True, None
-
-    schema_text = load_local_schema_text()
-    if not schema_text:
-        return True, None
-
-    try:
-        schema = json.loads(schema_text)
-        errors = sorted(Draft7Validator(schema).iter_errors(dashboard), key=lambda e: list(e.path))
-        if errors:
-            first = errors[0]
-            loc = "/".join(str(p) for p in first.path)
-            return False, f"{first.message}" + (f" (at /{loc})" if loc else "")
-        return True, None
-    except Exception as exc:  # pragma: no cover - defensive
-        logger.info("schema validation skipped: %s", exc)
-        return True, None
-
-
-# ---------------------------------------------------------------------------
-# Generation
-# ---------------------------------------------------------------------------
-def _user_message(contract: str, doc_context: str, intent: str) -> str:
-    return (
-        f"# Core contract\n{contract}\n\n"
-        f"# Reference docs / schema\n{doc_context}\n\n"
-        f"# User intent\n{intent.strip()}\n\n"
-        "Return the StrataBI dashboard JSON now."
-    )
+        errors = schema_errors(dashboard)
+    except ImportError:
+        return False, "Schema validation is unavailable (jsonschema is not installed)."
+    except Exception as exc:  # noqa: BLE001
+        return False, f"Schema validation could not run: {exc}"
+    if errors:
+        return False, "; ".join(errors)
+    return True, None

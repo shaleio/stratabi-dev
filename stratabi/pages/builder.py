@@ -20,7 +20,6 @@ from stratabi.core.s3_loader import (
     list_dashboard_options,
     save_dashboard_json,
     resolve_actor_token,
-    record_dashboard_recent,
 )
 from stratabi.core import ai_helpers
 
@@ -187,8 +186,6 @@ def layout():
             dcc.Store(id="builder-action-store"),
             dcc.Store(id="builder-current-s3-key-store"),
             dcc.Store(id="builder-selected-module-context-store"),
-            dcc.Store(id="builder-ai-store"),
-            dcc.Store(id="ai-handoff-store", storage_type="session"),
 
             # Hidden textarea bridge (JS writes into this; Dash reads value)
             dcc.Textarea(
@@ -609,15 +606,6 @@ def load_builder_assets(dashboard_key: str, user_id: str | None):
 
     try:
         initial = load_dashboard_json(dashboard_key, user_id)
-
-        try:
-            record_dashboard_recent(
-                user_id=user_id,
-                dashboard_key=dashboard_key,
-                label=initial.get("name") or initial.get("label"),
-            )
-        except Exception:
-            pass
 
     except Exception as e:
         dashboard_id = dashboard_id_from_value(dashboard_key)

@@ -12,6 +12,7 @@ from botocore.exceptions import ClientError
 from stratabi.core.athena_runner import AthenaRunner
 from stratabi.core.text_utils import coerce_lines
 from stratabi.core.lambda_runner import (
+    invoke_lambda_sync,
     invoke_lambda_async,
     resolve_module_for_execution,
 )
@@ -242,6 +243,9 @@ def _make_run_id(
     else:
         payload["inputs"] = inputs or {}
 
+    if runtime_event.get("sync_nonce"):
+        payload["sync_nonce"] = runtime_event["sync_nonce"]  # exec.sync: every call is its own run
+
     raw = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
 
@@ -314,13 +318,27 @@ def _status_context(
 
     if module_id:
         context["module_id"] = module_id
+        # Who asked. The module contract carries actor / actor_verified / auth_mode. The
+        # Developer Edition has no sign-in, so this is always the unverified shared actor —
+        # exactly what a module sees from a deployment without auth. Build modules to treat
+        # actor_verified=False as "no individual user".
+        context.update(_actor_fields())
 
     return context
+
+
+def _actor_fields() -> dict:
+    return {"actor": "anonymous", "actor_verified": False, "auth_mode": "none"}
+
 
 def _put_running_status(
     status_context: dict,
     message: str | None = None,
+    replace: dict | None = None,
 ) -> tuple[dict, bool]:
+    """Claim the run (write RUNNING). New run: only if no row exists. Re-run of an existing
+    row (`replace`): only if the row is still exactly the one we looked at, so two browsers
+    retrying at once can't both invoke."""
     item = dict(status_context)
 
     exec_type = item.get("exec_type", "unknown")
@@ -330,20 +348,152 @@ def _put_running_status(
     item["message"] = message or f"Async {exec_type} execution invoked."
     item["traceback"] = ""
 
+    if replace is None:
+        cond = {"ConditionExpression": (
+            "attribute_not_exists(runtime_tile_key) "
+            "AND attribute_not_exists(run_id)"
+        )}
+    else:
+        item["attempt"] = int(replace.get("attempt") or 1) + 1
+        cond = {
+            "ConditionExpression": "#st = :st AND updated_at = :u",
+            "ExpressionAttributeNames": {"#st": "status"},
+            "ExpressionAttributeValues": {":st": replace.get("status"), ":u": replace.get("updated_at")},
+        }
+
     try:
-        _get_status_table().put_item(
-            Item=item,
-            ConditionExpression=(
-                "attribute_not_exists(runtime_tile_key) "
-                "AND attribute_not_exists(run_id)"
-            ),
-        )
+        _get_status_table().put_item(Item=item, **cond)
         return item, True
 
     except ClientError as e:
         if e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
             return item, False
         raise
+
+
+# A worker that dies before reporting (crash, missing IAM, timeout) leaves its row RUNNING. Lambda
+# tops out at 15 min, so a RUNNING row older than this can never complete on its own.
+ASYNC_STALE_SECONDS = int(os.getenv("STRATABI_ASYNC_STALE_SECONDS", "900"))
+_ACTIVE = ("QUEUED", "PENDING", "RUNNING", "REQUESTED", "PROCESSING")
+_FAILED = ("FAILED", "CANCELLED")
+
+
+def _is_stale(status: dict) -> bool:
+    if str(status.get("status", "")).upper() not in _ACTIVE:
+        return False
+    try:
+        ts = datetime.fromisoformat(str(status.get("updated_at")).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return True  # unparseable timestamp on an active row: treat as dead
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - ts).total_seconds() > ASYNC_STALE_SECONDS
+
+
+def _mark_timed_out(status: dict) -> dict:
+    failed = dict(status)
+    failed["status"] = "FAILED"
+    failed["updated_at"] = _now_iso()
+    failed["message"] = (f"No completion reported within {ASYNC_STALE_SECONDS // 60} min — the worker "
+                         "stopped without reporting. Use ▷ to run again.")
+    try:
+        _get_status_table().put_item(
+            Item=failed,
+            ConditionExpression="#st = :st AND updated_at = :u",
+            ExpressionAttributeNames={"#st": "status"},
+            ExpressionAttributeValues={":st": status.get("status"), ":u": status.get("updated_at")},
+        )
+    except ClientError:
+        pass  # someone else updated it first; their state wins
+    return failed
+
+
+def _resolve_existing(status: dict | None, rerun: str | None) -> tuple[dict | None, dict | None]:
+    """Decide what to do with an existing status row. Returns (status_to_report, row_to_replace):
+    - (row, None)  -> report the row as-is (cached result / still running / failed)
+    - (None, row)  -> re-invoke, overwriting `row`
+    rerun: None (poll/normal), "retry_failed" (fresh page load), "force" (explicit ▷ run)."""
+    if not status:
+        return None, None
+    st = str(status.get("status", "")).upper()
+    stale = _is_stale(status)
+    if rerun == "force" and (st not in _ACTIVE or stale):
+        return None, status
+    if rerun == "retry_failed" and (st in _FAILED or stale):
+        return None, status
+    if stale:
+        return _mark_timed_out(status), None
+    return status, None
+
+
+def _run_lambda_sync(tile: dict, exec_cfg: dict, inputs: dict, dashboard_key: str,
+                     runtime_session_id: str | None, trigger_kind: str = "load"):
+    """exec.sync: call the module Lambda and wait for it (RequestResponse) instead of invoking it
+    in the background and polling. Same contract as async — the module writes its artifact to
+    status_context.result_s3_key and returns {"status", "message"} — so artifacts stay in S3 and
+    inspectable, and a module needs no changes to support it. Each call is a fresh run (unique
+    run_id): sync tiles aren't cached, which is what action tiles want. For quick work only; the
+    tile's request blocks until the Lambda answers (exec.timeout_seconds, default 30, max 120)."""
+    try:
+        module = resolve_module_for_execution(exec_cfg["module_id"], exec_cfg["lambda_index"])
+    except Exception as e:  # noqa: BLE001
+        return {"status": "FAILED", "message": f"Failed to resolve module {exec_cfg.get('module_id')}: {e}"}
+
+    run_id = _make_run_id(tile=tile, inputs=inputs, dashboard_key=dashboard_key,
+                          runtime_session_id=runtime_session_id,
+                          runtime_event={"sync_nonce": uuid.uuid4().hex})
+    status_context = _status_context(
+        dashboard_key=dashboard_key, tile=tile, runtime_session_id=runtime_session_id,
+        inputs=inputs, run_id=run_id, exec_type="lambda", module_id=module["module_id"],
+    )
+    payload = {
+        "deployment_id": DEPLOYMENT_ID,
+        "dashboard_key": dashboard_key,
+        "runtime_session_id": _normalize_runtime_session_id(runtime_session_id),
+        "runtime_tile_key": status_context["runtime_tile_key"],
+        "dashboard_tile_key": status_context["dashboard_tile_key"],
+        "tile": tile,
+        "tile_id": tile["id"],
+        "inputs": inputs,
+        "run_id": run_id,
+        "invocation": "sync",
+        "trigger": trigger_kind,
+        # No status writer: core records the outcome itself once the call returns.
+        "status_writer_lambda_arn": None,
+        "status_context": status_context,
+        "module": {
+            "module_id": module["module_id"],
+            "version": module.get("version"),
+            "lambda_index": module["lambda_index"],
+            "lambda_name": module.get("lambda_name"),
+        },
+    }
+    try:
+        resp = invoke_lambda_sync(module["lambda_arn"], payload, exec_cfg.get("timeout_seconds"))
+    except Exception as e:  # noqa: BLE001 — timeout / throttle / permission
+        return {"status": "FAILED", "message": f"Module Lambda call failed: {e}"}
+
+    body = resp.get("payload") or {}
+    if resp.get("function_error"):
+        msg = body.get("errorMessage") or body.get("message") or resp["function_error"]
+        return {"status": "FAILED", "message": f"Module Lambda error: {msg}"}
+    status = str(body.get("status") or "SUCCEEDED").upper()
+    if status in _FAILED:
+        return {"status": "FAILED", "message": body.get("message") or "Module reported failure."}
+
+    if isinstance(body.get("inline_html"), str):
+        # Ephemeral result (e.g. a one-time launch link): render it in this response only. It is
+        # never written to S3, the status table or logs, so nothing can replay or download it.
+        return body["inline_html"]
+
+    record = dict(status_context)
+    record.update(status="SUCCEEDED", updated_at=_now_iso(), invocation="sync",
+                  message=body.get("message") or "Completed (sync).", traceback="")
+    try:  # lineage + artifact download; best-effort, never fails the tile
+        _get_status_table().put_item(Item=record)
+    except Exception:  # noqa: BLE001
+        pass
+    return load_result_from_status(record)
 
 
 def _handle_status_result(status: dict):
@@ -408,9 +558,14 @@ def execute_tile(
     inputs: dict | None = None,
     dashboard_key: str | None = None,
     runtime_session_id: str | None = None,
+    rerun: str | None = None,
+    trigger_kind: str = "load",
 ):
     """
     Execute a StrataBI tile.
+
+    rerun (async tiles): None = report the existing run; "retry_failed" = re-invoke a failed or
+    dead run (fresh page load); "force" = re-invoke any finished or dead run (explicit ▷).
 
     Returns:
       - pandas.DataFrame or renderable result when ready
@@ -480,7 +635,7 @@ def execute_tile(
             tile_id=tile["id"],
         )
 
-        status = _get_tile_status(runtime_tile_key, run_id)
+        status, replace = _resolve_existing(_get_tile_status(runtime_tile_key, run_id), rerun)
 
         if not status:
             # Temporary: async Athena still uses an explicit Lambda ARN.
@@ -496,6 +651,7 @@ def execute_tile(
             status_context, acquired_lock = _put_running_status(
                 status_context,
                 message="Async Athena Lambda invoked.",
+                replace=replace,
             )
             if not acquired_lock:
                 return {"status": "RUNNING"}
@@ -539,6 +695,9 @@ def execute_tile(
     # ---------------------------------------
     if exec_type == "lambda":
 
+        if exec_cfg.get("sync"):
+            return _run_lambda_sync(tile, exec_cfg, inputs, dashboard_key, runtime_session_id, trigger_kind)
+
         run_id = _make_run_id(
             tile=tile,
             inputs=inputs,
@@ -552,7 +711,7 @@ def execute_tile(
             tile_id=tile["id"],
         )
 
-        status = _get_tile_status(runtime_tile_key, run_id)
+        status, replace = _resolve_existing(_get_tile_status(runtime_tile_key, run_id), rerun)
 
         if not status:
             try:
@@ -579,6 +738,7 @@ def execute_tile(
             status_context, acquired_lock = _put_running_status(
                 status_context,
                 message=f"Module Lambda invoked: {module['module_id']}",
+                replace=replace,
             )
 
             if not acquired_lock:
@@ -597,6 +757,9 @@ def execute_tile(
                         "tile_id": tile["id"],
                         "inputs": inputs,
                         "run_id": run_id,
+                        # why this run happened: load | input | run | refresh | interval —
+                        # lets a module act only on an explicit ▷ (e.g. send a chat message).
+                        "trigger": trigger_kind,
                         "status_writer_lambda_arn": os.getenv("STRATABI_STATUS_WRITER_LAMBDA_ARN"),
                         "status_context": status_context,
                         "module": {

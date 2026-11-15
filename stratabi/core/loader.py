@@ -68,9 +68,17 @@ def load_dashboard_by_s3_key(key: str):
         return None
     import boto3
     try:
-        body = boto3.client("s3").get_object(Bucket=config.BUCKET, Key=key)["Body"].read()
+        # The system bucket (STRATABI_SYSTEM_BUCKET) — the same bucket modules write to. Reading
+        # config.BUCKET (STRATABI_BUCKET) here meant Bucket=None on standard installs, so every
+        # session dashboard (StrataChat's Workspace) silently fell back to the empty layout.
+        from stratabi.core.s3_loader import get_system_bucket
+        from stratabi.core.config import aws_region
+        body = boto3.client("s3", region_name=aws_region()).get_object(
+            Bucket=get_system_bucket(), Key=key)["Body"].read()
         return json.loads(body)
-    except Exception:
+    except Exception as exc:  # noqa: BLE001 — missing/denied/corrupt -> caller's empty state
+        import logging
+        logging.getLogger(__name__).info("dashboard_source %s unavailable: %s", key, exc)
         return None
 
 

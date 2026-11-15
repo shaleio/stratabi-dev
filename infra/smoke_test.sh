@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# StrataBI post-apply smoke test.
+# StrataBI Developer Edition data-plane smoke test (no app is deployed here).
 # Usage: ./smoke_test.sh <name_prefix> <region>
 # Requires: awscli configured with read access to the install account.
 set -uo pipefail
@@ -13,17 +13,6 @@ bad()  { echo "  FAIL $1"; fail=1; }
 
 echo "StrataBI smoke test — prefix=${PREFIX} region=${REGION}"
 
-echo "[ALB]"
-alb_dns=$(aws elbv2 describe-load-balancers --names "${PREFIX}-alb" \
-  --region "$REGION" --query 'LoadBalancers[0].DNSName' --output text 2>/dev/null)
-[ -n "$alb_dns" ] && [ "$alb_dns" != "None" ] && ok "ALB ${PREFIX}-alb (${alb_dns})" || bad "ALB ${PREFIX}-alb not found"
-
-echo "[ECS]"
-running=$(aws ecs describe-services --cluster "${PREFIX}-cluster" \
-  --services "${PREFIX}-service" --region "$REGION" \
-  --query 'services[0].runningCount' --output text 2>/dev/null)
-[ -n "$running" ] && [ "$running" != "None" ] && ok "ECS service runningCount=${running}" || bad "ECS service not found"
-
 echo "[Lambda]"
 for fn in "${PREFIX}-athena-async" "${PREFIX}-status-writer"; do
   aws lambda get-function --function-name "$fn" --region "$REGION" >/dev/null 2>&1 \
@@ -32,10 +21,15 @@ done
 
 echo "[DynamoDB]"
 for t in "${PREFIX}_tile_status" "${PREFIX}_module_registry" "${PREFIX}_source_registry" \
-         "${PREFIX}-dashboard-favorites" "${PREFIX}-dashboard-pinned" "${PREFIX}-dashboard-recents"; do
+         "${PREFIX}-dashboard-git-registry"; do
   aws dynamodb describe-table --table-name "$t" --region "$REGION" >/dev/null 2>&1 \
     && ok "table $t" || bad "table $t missing"
 done
+
+echo "[Athena]"
+wgs=$(aws athena list-work-groups --region "$REGION" \
+  --query "length(WorkGroups[?starts_with(Name, '${PREFIX}-wg-')])" --output text 2>/dev/null)
+[ -n "$wgs" ] && [ "$wgs" != "0" ] && ok "${wgs} workgroup(s) ${PREFIX}-wg-NN" || bad "no ${PREFIX}-wg-NN workgroups"
 
 echo "[S3]"
 acct=$(aws sts get-caller-identity --query Account --output text 2>/dev/null)

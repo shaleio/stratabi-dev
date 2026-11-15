@@ -61,6 +61,29 @@
       "pattern": "^https://",
       "description": "Public documentation page for this module (linked from the app catalog). Lets people — and AI tools reading module.json — find the module's docs without crawling the site."
     },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional app toolbar controls and card look (default off / unchanged). show_refresh re-queries the current page (views and option lists re-run; manual/action tiles never run on Refresh). show_status opens the page's recorded run status (state, updated time, message, run id). card_style sets one card look for every tile.",
+      "properties": {
+        "show_refresh": {
+          "type": "boolean",
+          "default": false
+        },
+        "show_status": {
+          "type": "boolean",
+          "default": false
+        },
+        "card_style": {
+          "type": "string",
+          "enum": [
+            "match",
+            "muted"
+          ],
+          "description": "Page-wide card look for the app. match: cards use the module HTML background (dark #0d1117 / light #ffffff) so HTML tiles blend in, and title-less static markdown tiles drop the card chrome. muted: Bootstrap secondary outline. Omit for the default dashboard look. A tile's own card.color/outline still wins."
+        }
+      }
+    },
     "recommended_theme": {
       "type": "string"
     },
@@ -389,7 +412,7 @@
       }
     }
   ],
-  "x-schema-version": "1.2.0",
+  "x-schema-version": "1.4.0",
   "x-schema-changelog": [
     "1.1.0: add page.dashboard_source (session dashboard loading seam).",
     "1.2.0: add optional min_tier (catalog tier badge) and docs_url, additive."

@@ -1,0 +1,38 @@
+/* App (module) card styles — module.json ui.card_style (pages/dashboard.py _apply_card_style). */
+
+/* match: the card fill IS the module HTML background (StrataMail/Notebook/Chat paint #0d1117 on
+   dark themes, #ffffff on light), so raw_html iframes blend into their card. */
+.card.sbi-surface-dark  { background-color: #0d1117 !important; color: #e8ecf1; }
+.card.sbi-surface-light { background-color: #ffffff !important; color: #1f2328; }
+.card.sbi-card-match    { border-color: rgba(127, 127, 127, .22) !important; box-shadow: none !important; }
+.card.sbi-card-match > .card-header { background: transparent !important; font-weight: 600;
+                                      border-bottom-color: rgba(127, 127, 127, .22) !important; }
+
+/* Text-only tiles (intros, caveats) on a matched page: no card chrome — they read as page text. */
+.card.sbi-card-bare { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+.card.sbi-card-bare > .card-body { padding-left: 0; padding-right: 0; }
+
+/* muted: secondary outline, transparent fill (dbc adds border-secondary). */
+.card.sbi-card-muted { background: transparent !important; box-shadow: none !important; }
+.card.sbi-card-muted > .card-header { background: transparent !important; }
+
+/* keep_previous tiles: small status badge above the last successful result (empty = hidden). */
+.sbi-tile-badge:empty { display: none; }
+.sbi-tile-badge { margin: 0 0 .4rem; line-height: 1; }
+.sbi-tile-badge .badge { font-weight: 500; white-space: normal; text-align: left; }
+
+/* Building indicator: a working-word badge + a quiet "Refresh to check" hint (async/initial tiles). */
+.sbi-building { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; padding: .15rem 0; }
+.sbi-building-badge { font-weight: 500; letter-spacing: .02em; animation: sbi-building-pulse 1.8s ease-in-out infinite; }
+.sbi-building-hint { font-size: .78rem; opacity: .55; font-style: italic; color: var(--bs-secondary-color, inherit); }
+@keyframes sbi-building-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .sbi-building-badge { animation: none; } }
+
+/* Markdown tiles: theme accents + never spill out of the card. */
+.stratabi-md h1, .stratabi-md h2, .stratabi-md h3, .stratabi-md h4 { color: var(--bs-primary); }
+.stratabi-md h4 { font-size: 1.05rem; font-weight: 600; margin-bottom: .5rem; }
+.stratabi-md blockquote { border-left: 3px solid var(--bs-primary); padding: .15rem 0 .15rem .75rem;
+                          margin: 0 0 .5rem; color: var(--bs-secondary-color); }
+.stratabi-md blockquote p:last-child { margin-bottom: 0; }
+.stratabi-md table { display: block; max-width: 100%; overflow-x: auto; }
+.stratabi-md code { color: var(--bs-info); }
