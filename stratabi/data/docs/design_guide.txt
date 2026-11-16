@@ -1,0 +1,55 @@
+DESIGN GUIDE — make dashboards look finished, not generated (follow unless the user asks otherwise)
+
+Cards and color
+- Every tile gets an OUTLINED card: "card": {"color": "<c>", "outline": true}.
+- Colors tell a story; tiles that belong together share a color:
+    secondary = controls and context (inputs, filters, selectors, reference lists)
+    primary   = the headline numbers and main results
+    info      = supporting charts, trends and actions
+    warning / danger = ONLY exceptions, alerts, SLA breaches or operationally critical data
+- Never use more than 3-4 colors on a page. Don't color a tile warning/danger for decoration.
+- An intro/heading markdown tile has no card chrome: "card": {"show_header": false}, no color.
+
+Layout
+- Bootstrap 12-column grid. Size to content: a KPI or single input 3, a small chart 4-6,
+  a main chart 6-9, tables and wide charts 12. A row's widths add up to 12.
+- Many controls? Stack them in a left column: same row, "position": {"stack": "controls", "width": 3},
+  main content to the right (width 9, or 6 + a 3-wide KPI stack). Use this by default when there
+  are 3+ inputs and the user didn't ask for another layout.
+- Start with a one-line intro markdown tile (## Title + one sentence). Don't repeat the tile title
+  inside its markdown.
+- Give charts and tables an explicit height string ("320px", "40vh") so rows line up.
+
+Tiles
+- Input tiles always have a "title" (it becomes the card header) and a sensible default "value".
+- Tiles fed by an input list it in "triggered_by" (the input tile id) and use "load": {"mode": "input"}.
+- Charts: "theme_colors": true instead of hard-coded colors; trim margins ("margin": {"t": 10}).
+- Prefer native blocks over HTML: markdown for KPIs and notes, table for rows, plotly for charts.
+  Native results are stored as data (CSV/Parquet/Markdown) that can be queried and mined later;
+  HTML is opaque. Use raw_html only when the view is genuinely novel. When you do, keep its
+  background transparent and inherit the text color so it blends with the card (in apps, the
+  module's ui.card_style "match" does this).
+- Lists and views that re-read data: "controls": {"run_button": true, "run_icon": "refresh"};
+  actions keep the default ▷. Action (manual) tiles get a "placeholder" explaining what ▷ does.
+- Async tiles that refresh in place: "load": {"keep_previous": true}.
+- Tables that people will export: "artifact": {"download": true}.
+
+Common mistakes that fail validation or look broken
+- "card" is an object, never a string. Heights are strings with units, never numbers.
+- Don't invent fields; the schema is closed. Every tile id is unique.
+- Don't put a whole page in one raw_html tile. Don't leave a row half empty.
+
+EXAMPLE (valid; left control stack, KPI stack, color story, native blocks):
+{
+  "name": "Fleet Operations",
+  "description": "Weekly fuel, utilization and exceptions by region.",
+  "layout": [
+    {"id": "intro", "position": {"row": 0, "order": 0, "width": 12}, "card": {"show_header": false}, "block": {"type": "markdown", "config": {"content": "## Fleet Operations\nFuel, utilization and exceptions across the active fleet. Pick a region on the left."}}},
+    {"id": "region_input", "title": "Region", "position": {"row": 1, "order": 0, "width": 3, "stack": "controls"}, "card": {"color": "secondary", "outline": true}, "block": {"type": "input_select", "config": {"input_id": "region", "label": "Region", "component": "dropdown", "options": [{"label": "All regions", "value": "ALL"}, {"label": "West", "value": "West"}, {"label": "Gulf", "value": "Gulf"}], "value": "ALL", "clearable": false}}},
+    {"id": "weeks_input", "title": "Weeks", "position": {"row": 1, "order": 2, "width": 3, "stack": "controls"}, "card": {"color": "secondary", "outline": true}, "block": {"type": "input_range", "config": {"input_id": "weeks", "label": "Weeks", "min": 4, "max": 26, "step": 1, "value": 12}}},
+    {"id": "kpi_fuel", "title": "Fuel economy", "position": {"row": 1, "order": 1, "width": 3, "stack": "kpis"}, "card": {"color": "primary", "outline": true}, "block": {"type": "markdown", "config": {"content": "### 7.9 mpg\n▲ 0.3 vs last week"}}},
+    {"id": "kpi_util", "title": "Utilization", "position": {"row": 1, "order": 3, "width": 3, "stack": "kpis"}, "card": {"color": "primary", "outline": true}, "block": {"type": "markdown", "config": {"content": "### 94%\nof active units on route"}}},
+    {"id": "trend", "title": "Fuel economy by week", "position": {"row": 1, "order": 5, "width": 6}, "card": {"color": "info", "outline": true}, "triggered_by": ["region_input", "weeks_input"], "load": {"mode": "input", "keep_previous": true}, "exec": {"type": "athena", "database": "fleet", "async": true, "result_kind": "dataframe", "result_format": "parquet"}, "query": {"sql": "SELECT week, mpg FROM fuel_weekly WHERE (:region = 'ALL' OR region = :region) ORDER BY week DESC LIMIT :weeks", "params": {"region": "region", "weeks": "weeks"}}, "block": {"type": "plotly", "config": {"theme_colors": true, "height": "320px", "figure": {"data": [{"type": "scatter", "mode": "lines+markers", "x": "@week", "y": "@mpg"}], "layout": {"margin": {"t": 10, "r": 10}}}}}},
+    {"id": "exceptions", "title": "Units needing attention", "position": {"row": 2, "order": 0, "width": 12}, "card": {"color": "warning", "outline": true}, "triggered_by": ["region_input"], "load": {"mode": "input"}, "exec": {"type": "athena", "database": "fleet", "async": true, "result_kind": "dataframe", "result_format": "parquet"}, "query": {"sql": "SELECT unit, region, issue, since FROM fleet_exceptions WHERE (:region = 'ALL' OR region = :region) ORDER BY since", "params": {"region": "region"}}, "controls": {"run_button": true, "run_icon": "refresh"}, "artifact": {"download": true}, "block": {"type": "table", "config": {"page_size": 15, "height": "380px"}}}
+  ]
+}

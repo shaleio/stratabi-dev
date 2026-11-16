@@ -88,6 +88,11 @@ def assemble_llm_context(selected_module_ids: list[str] | None = None) -> str:
     """Core contract plus the llm_context.txt of each selected module."""
     selected = selected_module_ids or []
     sections = ["# StrataBI Core LLM Contract", load_core_contract()]
+    try:
+        guide = files("stratabi.data.docs").joinpath("design_guide.txt").read_text(encoding="utf-8")
+        sections += ["# Design guide", guide]
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("design guide unavailable: %s", exc)
 
     for module_id in selected:
         if not module_id:

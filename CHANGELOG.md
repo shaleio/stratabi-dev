@@ -2,6 +2,15 @@
 
 All notable changes. Versions follow `stratabi/__init__.py`.
 
+## [1.7.9] — 2026-11-16
+
+- **Design guide for AI-built dashboards** (`data/docs/design_guide.txt`): outlined cards, a color
+  story (secondary = controls, primary = headline results, info = supporting charts/actions,
+  warning/danger only for exceptions), left control stacks, size-to-content widths, native blocks
+  over HTML (stored as minable data), input tiles with headers and defaults, refresh vs ▷ buttons,
+  common validation mistakes — plus a worked example (validated in tests). Sent with every Builder
+  / home AI request and included in **LLM Contract** for bring-your-own agents.
+
 ## [1.7.8] — 2026-11-16
 
 - Failed tiles render as an outlined alert with a short title and the AWS code/operation as a detail
