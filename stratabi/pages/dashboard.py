@@ -1334,6 +1334,30 @@ def _empty_result_note(tile: dict, block: dict, result):
     return None
 
 
+_AWS_ERR = re.compile(r"An error occurred \((?P<code>[\w.]+)\) when calling the (?P<op>\w+) operation:\s*")
+
+
+def error_panel(message, title: str | None = None):
+    """A failed tile: a quiet outlined alert (not dismissable) with a short title, the readable
+    message, and the AWS error code/operation as a small detail line when there is one."""
+    text = str(message or "Tile execution failed.").strip()
+    if title is None:  # modules send "Title: message"; keep a short title, else "Couldn't load this tile"
+        head, sep, rest = text.partition(": ")
+        if sep and 0 < len(head) <= 48 and "\n" not in head and rest:
+            title, text = head, rest
+        else:
+            title = "Couldn't load this tile"
+    detail = None
+    m = _AWS_ERR.search(text)
+    if m:
+        detail = f"{m.group('code')} · {m.group('op')}"
+        text = (text[:m.start()] + text[m.end():]).strip() or text
+    children = [html.Div(title, className="fw-semibold mb-1"), dcc.Markdown(text, className="mb-0 sbi-error-text")]
+    if detail:
+        children.append(html.Div(detail, className="small mt-1 opacity-75 font-monospace"))
+    return dbc.Alert(children, color="danger", dismissable=False, className="sbi-error mb-0")
+
+
 def _tile_exec_error(tile: dict, exc: Exception):
     """Render a tile execution failure (returns (content, status)) instead of letting the
     exception escape the callback as an HTTP 500 with a blank tile."""
@@ -1343,8 +1367,8 @@ def _tile_exec_error(tile: dict, exc: Exception):
     if "nocredential" in blob or "expiredtoken" in blob or ("expired" in blob and "token" in blob):
         friendly = "AWS credentials not found or expired. Run `aws sso login` (or refresh your credentials)."
     else:
-        friendly = f"Tile execution failed: {msg}"
-    return html.Div(friendly, className=status_text_class(tile, "danger")), "FAILED"
+        friendly = msg
+    return error_panel(friendly, "AWS credentials" if "credentials" in friendly else None), "FAILED"
 
 
 @callback(
@@ -1567,18 +1591,14 @@ def _update_tile_impl(config, _refresh, _tick, trigger_data, run_data, inputs, a
         else:
             return (building_indicator(tile)
                     if status in ACTIVE_TILE_STATUSES else
-                    html.Div(result.get("message", "Tile execution failed."),
-                             className=status_text_class(tile, "danger"))), status, ""
+                    error_panel(result.get("message"))), status, ""
     if status is not None:
 
         if status in ACTIVE_TILE_STATUSES:
             return building_indicator(tile), status
 
         if status == "FAILED":
-            return html.Div(
-                result.get("message", "Tile execution failed."),
-                className=status_text_class(tile, "danger"),
-            ), status
+            return error_panel(result.get("message")), status
 
         if status == "CANCELLED":
             return html.Div("Tile execution cancelled.", className=status_text_class(tile, "muted")), status

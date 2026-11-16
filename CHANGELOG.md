@@ -2,6 +2,11 @@
 
 All notable changes. Versions follow `stratabi/__init__.py`.
 
+## [1.7.8] — 2026-11-16
+
+- Failed tiles render as an outlined alert with a short title and the AWS code/operation as a detail
+  line — same as core 1.7.29.
+
 ## [1.7.7] — 2026-11-15
 
 - Dash 4.5; `controls.run_icon` (`refresh` ↻ / `play` ▷, schema 1.7.0); colored app cards keep their
